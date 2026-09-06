@@ -1,4 +1,4 @@
-# Family NFL Picks — coded prototype v0.2
+# Family NFL Picks — coded prototype v0.4
 
 This is the second working prototype for Yasin's family NFL game.
 
@@ -52,3 +52,12 @@ The current schedule endpoint is useful for prototyping but is not an official g
 - The app now shows `v0.3` in the header so you can verify the deployed build.
 - The service worker cache was versioned and now clears older app-shell caches, preventing GitHub Pages from continuing to show v0.1 after an update.
 - Existing browser/localStorage game data is not intentionally cleared by this update.
+
+
+## v0.4 scoring-safety fix
+- Removed the **Enter Demo Finals** control. It was only a prototype test button and could create fake finals for games that had not been played.
+- A week can no longer be scored until **every scheduled game has a confirmed FINAL result**.
+- Schedule refresh only promotes scores into official results when the schedule feed marks the game complete/final.
+- Future/in-progress games no longer display fake `Final:` lines. In-progress scores are labeled `LIVE`; completed games are labeled `FINAL`.
+- Standings do not award or preview weekly points before the whole week is final.
+- v0.4 automatically detects v0.3 demo-final contamination, removes those fake results, and rolls back points that were added from them while preserving picks, PINs, submissions, and non-demo overrides.
