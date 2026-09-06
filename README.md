@@ -44,3 +44,11 @@ Then open `http://localhost:8080`.
 This version still stores data in one browser. The actual four-phone app needs a shared backend (for example Supabase) so submissions, PINs, locks, history, live results, and Super Bowl margin races sync in real time.
 
 The current schedule endpoint is useful for prototyping but is not an official guaranteed API. Production should use a stable NFL data provider or a small server-side adapter.
+
+
+## v0.3 update note
+- History is a permanent bottom-navigation tab for all players.
+- Commissioner 'Pick Audit' was renamed to 'Commissioner Review'.
+- The app now shows `v0.3` in the header so you can verify the deployed build.
+- The service worker cache was versioned and now clears older app-shell caches, preventing GitHub Pages from continuing to show v0.1 after an update.
+- Existing browser/localStorage game data is not intentionally cleared by this update.
