@@ -1,6 +1,6 @@
-# Family NFL Picks — coded prototype v0.1
+# Family NFL Picks — coded prototype v0.2
 
-This is the first working prototype for Yasin's family NFL game.
+This is the second working prototype for Yasin's family NFL game.
 
 ## Run it
 From this folder:
@@ -10,7 +10,15 @@ python3 -m http.server 8080
 ```
 Then open `http://localhost:8080`.
 
-## Already implemented
+## New in v0.2
+- **History tab for everyone.** Once a week is scored, any player can reopen it and see every person's picks, margins, checks, final scores, weekly checks, and weekly points.
+- History only exposes completed/scored weeks, so it does not bypass the current-week pick privacy rules.
+- Week chips make it easy to jump back to Week 1, Week 2, etc.
+- Team records are shown under team names when the schedule feed provides them.
+- Scored weeks save a score summary into history.
+- The commissioner scoring action is protected against accidentally adding the same week to season totals twice.
+
+## Core rules already implemented
 - Four players: Yasin (commissioner), Yezan, Samer, Limar.
 - 4-digit PIN creation/login.
 - Pick a team by tapping; winning margin is always entered.
@@ -32,7 +40,7 @@ Then open `http://localhost:8080`.
 - Super Bowl scoring engine includes first-place team choice and tied-second margin resolution.
 - Auto schedule prototype attempts to load the NFL week from ESPN's public scoreboard endpoint and falls back to demo games.
 
-## Important next step
-This version stores data in the browser so the UI and rules can be tested immediately. For the actual four-phone family app, the data layer needs to move to a shared backend (Supabase/Firebase/etc.) so submissions, PINs, locks, races for Super Bowl margins, and commissioner overrides sync in real time.
+## Important production step
+This version still stores data in one browser. The actual four-phone app needs a shared backend (for example Supabase) so submissions, PINs, locks, history, live results, and Super Bowl margin races sync in real time.
 
 The current schedule endpoint is useful for prototyping but is not an official guaranteed API. Production should use a stable NFL data provider or a small server-side adapter.
