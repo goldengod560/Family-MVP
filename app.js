@@ -201,11 +201,11 @@ async function maybeSendWeeklyEmail(){
 
 function shell(content,active='home'){
   const u=viewer(),backendLabel=isConfigured()?'Shared online':'Not connected';
-  return `<div class="shell"><div class="topbar"><div><div class="brand">🏈 Family NFL Picks</div><div class="sub">${state?.season||2026} Season · Week ${state?.currentWeek||1} · v0.7.2 · ${backendLabel}</div></div>${u?`<button class="btn secondary compact" data-act="logout">${esc(u.name)} ↗</button>`:''}</div>${content}</div>${u?`<div class="nav"><div class="nav-inner"><button data-nav="picks" class="${active==='picks'?'active':''}">Picks</button><button data-nav="standings" class="${active==='standings'?'active':''}">Standings</button><button data-nav="history" class="${active==='history'?'active':''}">History</button><button data-nav="predictions" class="${active==='predictions'?'active':''}">Predictions</button><button data-nav="commissioner" class="${active==='commissioner'?'active':''}">${u.admin?'Commish':'Status'}</button></div></div>`:''}${renderCelebration()}`;
+  return `<div class="shell"><div class="topbar"><div><div class="brand">🏈 Family NFL Picks</div><div class="sub">${state?.season||2026} Season · Week ${state?.currentWeek||1} · v0.7.2.1 · ${backendLabel}</div></div>${u?`<button class="btn secondary compact" data-act="logout">${esc(u.name)} ↗</button>`:''}</div>${content}</div>${u?`<div class="nav"><div class="nav-inner"><button data-nav="picks" class="${active==='picks'?'active':''}">Picks</button><button data-nav="standings" class="${active==='standings'?'active':''}">Standings</button><button data-nav="history" class="${active==='history'?'active':''}">History</button><button data-nav="predictions" class="${active==='predictions'?'active':''}">Predictions</button><button data-nav="commissioner" class="${active==='commissioner'?'active':''}">${u.admin?'Commish':'Status'}</button></div></div>`:''}${renderCelebration()}`;
 }
 function renderHome(){
   const warn=!isConfigured()?`<div class="notice warn">Supabase is not configured yet.</div>`:'';
-  return shell(`<div class="card"><div class="title">Who’s picking?</div><p class="sub">Choose your name and enter your 4-digit PIN.</p><div class="grid">${PLAYERS.map(p=>`<button class="player ${p.admin?'admin':''}" data-player="${p.id}" ${busy?'disabled':''}>${p.name}</button>`).join('')}</div></div>${warn}<div class="notice"><b>v0.7.2 shared mode:</b> all four phones share picks, progress, standings, History, and transparent commissioner overrides.</div>`);
+  return shell(`<div class="card"><div class="title">Who’s picking?</div><p class="sub">Choose your name and enter your 4-digit PIN.</p><div class="grid">${PLAYERS.map(p=>`<button class="player ${p.admin?'admin':''}" data-player="${p.id}" ${busy?'disabled':''}>${p.name}</button>`).join('')}</div></div>${warn}<div class="notice"><b>v0.7.2.1 shared mode:</b> all four phones share picks, progress, standings, History, and transparent commissioner overrides.</div>`);
 }
 function revealedBlock(g){
   if(!revealedForPlayers(g))return '';
@@ -339,7 +339,7 @@ async function backgroundStateRefresh(force=false){
 }
 async function backgroundNFLRefresh(){if(refreshing||!session?.token||document.hidden)return;refreshing=true;try{await syncSchedule({quiet:true});}finally{refreshing=false}}
 
-if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./service-worker.js').catch(()=>{});
+if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./service-worker.js?v=0721').catch(()=>{});
 boot();
 setInterval(updateCountdownLabels,1000);
 setInterval(()=>backgroundStateRefresh(false),15000);

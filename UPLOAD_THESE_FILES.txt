@@ -1,3 +1,1 @@
-Upload all files in this folder to your GitHub Pages repo, replacing the existing v0.7.1 files.
-This is v0.7.2 (mobile nav larger + margin helper text removed).
-No Supabase SQL needed for this update.
+Upload ALL files in this folder to GitHub, replacing existing files. This hotfix forces browsers/service workers off v0.7.1 cache. No Supabase changes needed.
