@@ -1,0 +1,9 @@
+FAMILY NFL PICKS v0.7 - GITHUB ONLY
+
+Upload ALL files in this folder to the ROOT of your GitHub repository and replace files with the same names.
+
+Important:
+- index.html MUST show a new GitHub timestamp after upload.
+- This package does NOT contain Supabase SQL. Do not run anything new in Supabase for this re-upload.
+- After GitHub Pages deploys, open the site with ?v=0707 once (example: https://YOURNAME.github.io/?v=0707) or use a private/incognito tab.
+- The app header should say: v0.7 · Shared online
