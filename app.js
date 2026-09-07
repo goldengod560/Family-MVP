@@ -3,7 +3,7 @@ import { backend, isConfigured } from './api.mjs';
 import { buildWeeklyReportFromSnapshot } from './report.mjs';
 
 const SESSION_KEY='family-nfl-session-v06';
-const APP_VERSION='0.7.8';
+const APP_VERSION='0.7.9';
 const RESULT_DISMISS_PREFIX='family-nfl-result-seen';
 let session=loadSession();
 let state=null;
@@ -238,7 +238,7 @@ function renderStandings(){
   const lb=latest?leaderboardForWeek(latest.week):(state?.standings||[]).map((x,i)=>({playerId:x.playerId,name:x.name,total:Number(x.total||0),rank:i+1,points:0,movement:null}));
   const current=state?.currentScores||[];
   const currentBlock=current.length?`<div class="section-title">Week ${state.currentWeek} final</div><div class="card"><table><thead><tr><th>Player</th><th class="right">Checks</th><th class="right">Week</th></tr></thead><tbody>${PLAYERS.map(p=>{const s=current.find(x=>x.playerId===p.id)||{};return `<tr><td>${p.name}</td><td class="right">${s.checks||0}</td><td class="right"><b>+${s.points||0}</b></td></tr>`}).join('')}</tbody></table></div>`:`<div class="section-title">Current week</div><div class="notice"><b>${finalCount()} of ${(state?.games||[]).length} games final.</b><br>No Week ${state.currentWeek} points are awarded until every game is final.</div>`;
-  return shell(`<div class="title">Season Standings</div><div class="card"><table><thead><tr><th>#</th><th></th><th>Player</th><th class="right">Last week</th><th class="right">Total</th></tr></thead><tbody>${lb.map(x=>`<tr><td>${x.rank}</td><td class="movement ${movementClass(x.movement)}">${movementText(x.movement)}</td><td>${esc(x.name)}${x.playerId==='yasin'?' 🛡️':''}</td><td class="right">+${x.points||0}</td><td class="right"><b>${x.total||0}</b></td></tr>`).join('')}</tbody></table></div>${currentBlock}`,'standings');
+  return shell(`<div class="title">Season Standings</div><div class="card standings-card"><table><thead><tr><th>#</th><th></th><th>Player</th><th class="right">Last week</th><th class="right">Total</th></tr></thead><tbody>${lb.map(x=>`<tr><td>${x.rank}</td><td class="movement ${movementClass(x.movement)}">${movementText(x.movement)}</td><td>${esc(x.name)}${x.playerId==='yasin'?' 🛡️':''}</td><td class="right">+${x.points||0}</td><td class="right"><b>${x.total||0}</b></td></tr>`).join('')}</tbody></table></div>${currentBlock}`,'standings');
 }
 function checksForHistoryGame(g){const map={};for(const p of g.picks||[])map[p.playerId]={team:p.team,margin:p.margin};return resolveGameChecks({picksByUser:map,homeTeam:g.home,awayTeam:g.away,homeScore:Number(g.homeScore),awayScore:Number(g.awayScore)});}
 function overrideDescription(o,games){

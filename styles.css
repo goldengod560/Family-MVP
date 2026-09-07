@@ -130,3 +130,22 @@ th{font-size:.75rem;color:#d5e4f6}
   th{font-size:.76rem;color:#dce9f9}
   .card.standings-card, .standings-card{padding:16px}
 }
+
+
+/* v0.7.9 commish + leaderboard visibility */
+.team.selected{outline:2px solid #dff4ff;border-color:#9cdcff;background:#214f79;box-shadow:inset 0 0 0 1px rgba(255,255,255,.28),0 0 0 1px rgba(223,244,255,.26)}
+.status-card .status-row .tiny{color:#dbe8f8;font-weight:760}
+.status-card .status-row .pill{font-weight:900;letter-spacing:.01em}
+.status-card .status-row .pill.good{background:rgba(72,213,151,.12);border-color:rgba(72,213,151,.42);color:#67efac}
+.status-card .status-row .pill.warn{background:rgba(255,198,90,.13);border-color:rgba(255,198,90,.42);color:#ffd06c}
+.standings-card{padding:24px}
+.standings-card table th,.standings-card table td{font-size:.98rem;padding:12px 8px}
+.standings-card table th{font-size:.82rem;color:#e1ecfa}
+@media(max-width:520px){
+  .status-card .status-row b{font-size:1.12rem}
+  .status-card .status-row .tiny{font-size:.88rem;color:#e1ecfa}
+  .status-card .status-row .pill{font-size:.92rem;padding:10px 16px;min-width:108px}
+  .standings-card{padding:18px}
+  .standings-card table th,.standings-card table td{font-size:.93rem;padding:12px 6px}
+  .standings-card table th{font-size:.82rem;color:#ebf4ff}
+}
