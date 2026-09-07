@@ -1,1 +1,1 @@
-Upload ALL files in this folder to GitHub, replacing existing files. v0.7.4.1 fixes the cache/version bug so the phone loads the v0.7.4 styling. No data is reset. Run the separate Supabase schedule-refresh hotfix once to repair the Schedule button.
+Upload ALL files in this folder to GitHub, replacing the existing files. v0.7.5 is a front-end visual update only: bigger Week Status names/pills, stronger contrast, a moved submission notice, and cleaner mobile spacing. No picks, points, history, or Supabase data are reset.

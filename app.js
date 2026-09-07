@@ -3,6 +3,7 @@ import { backend, isConfigured } from './api.mjs';
 import { buildWeeklyReportFromSnapshot } from './report.mjs';
 
 const SESSION_KEY='family-nfl-session-v06';
+const APP_VERSION='0.7.5';
 const RESULT_DISMISS_PREFIX='family-nfl-result-seen';
 let session=loadSession();
 let state=null;
@@ -183,7 +184,14 @@ async function syncSchedule({quiet=false,retry=true}={}){
       }catch{}
       if(!quiet)toast(`Week ${requestedWeek} is complete. Week ${newWeek} is now active.`);
     }else if(!quiet)toast('NFL schedule, records, and scores refreshed.');
-  }catch(e){lastScheduleSource='Last saved schedule';if(!quiet)toast(`Schedule refresh failed: ${e.message}`);}
+  }catch(e){
+    lastScheduleSource='Last saved schedule';
+    const msg=String(e?.message||e||'');
+    if(msg.includes('family_sync_games_for_week')){
+      await loadSnapshot().catch(()=>{});
+      if(!quiet)toast('Schedule button still needs the latest Supabase SQL fix. The page stayed on your saved schedule.');
+    }else if(!quiet)toast(`Schedule refresh failed: ${e.message}`);
+  }
   render();
 }
 async function maybeSendWeeklyEmail(){
@@ -201,11 +209,11 @@ async function maybeSendWeeklyEmail(){
 
 function shell(content,active='home'){
   const u=viewer(),backendLabel=isConfigured()?'Shared online':'Not connected';
-  return `<div class="shell"><div class="topbar"><div><div class="brand">🏈 Family NFL Picks</div><div class="sub">${state?.season||2026} Season · Week ${state?.currentWeek||1} · v0.7.4.1 · ${backendLabel}</div></div>${u?`<button class="btn secondary compact" data-act="logout">${esc(u.name)} ↗</button>`:''}</div><div class="page-divider"></div>${content}</div>${u?`<div class="nav"><div class="nav-inner"><button data-nav="picks" class="${active==='picks'?'active':''}">Picks</button><button data-nav="standings" class="${active==='standings'?'active':''}">Standings</button><button data-nav="history" class="${active==='history'?'active':''}">History</button><button data-nav="predictions" class="${active==='predictions'?'active':''}">Predictions</button><button data-nav="commissioner" class="${active==='commissioner'?'active':''}">${u.admin?'Commish':'Status'}</button></div></div>`:''}${renderCelebration()}`;
+  return `<div class="shell"><div class="topbar"><div><div class="brand">🏈 Family NFL Picks</div><div class="sub">${state?.season||2026} Season · Week ${state?.currentWeek||1} · v${APP_VERSION} · ${backendLabel}</div></div>${u?`<button class="btn secondary compact" data-act="logout">${esc(u.name)} ↗</button>`:''}</div><div class="page-divider"></div>${content}</div>${u?`<div class="nav"><div class="nav-inner"><button data-nav="picks" class="${active==='picks'?'active':''}">Picks</button><button data-nav="standings" class="${active==='standings'?'active':''}">Standings</button><button data-nav="history" class="${active==='history'?'active':''}">History</button><button data-nav="predictions" class="${active==='predictions'?'active':''}">Predictions</button><button data-nav="commissioner" class="${active==='commissioner'?'active':''}">${u.admin?'Commish':'Status'}</button></div></div>`:''}${renderCelebration()}`;
 }
 function renderHome(){
   const warn=!isConfigured()?`<div class="notice warn">Supabase is not configured yet.</div>`:'';
-  return shell(`<div class="card"><div class="title">Who’s picking?</div><p class="sub">Choose your name and enter your 4-digit PIN.</p><div class="grid">${PLAYERS.map(p=>`<button class="player ${p.admin?'admin':''}" data-player="${p.id}" ${busy?'disabled':''}>${p.name}</button>`).join('')}</div></div>${warn}<div class="notice"><b>v0.7.4.1 shared mode:</b> all four phones share picks, progress, standings, History, and transparent commissioner overrides.</div>`);
+  return shell(`<div class="card"><div class="title">Who’s picking?</div><p class="sub">Choose your name and enter your 4-digit PIN.</p><div class="grid">${PLAYERS.map(p=>`<button class="player ${p.admin?'admin':''}" data-player="${p.id}" ${busy?'disabled':''}>${p.name}</button>`).join('')}</div></div>${warn}<div class="notice"><b>v${APP_VERSION} shared mode:</b> all four phones share picks, progress, standings, History, and transparent commissioner overrides.</div>`);
 }
 function revealedBlock(g){
   if(!revealedForPlayers(g))return '';
@@ -223,7 +231,7 @@ function renderPicks(){
     return `<div class="game ${locked?'lock':''} ${near?'urgent':''}"><div class="game-head"><span>${fmtKickoff(g.kickoff)}</span><span class="status-pill ${st.cls}"${statusAttr}>${esc(st.label)}</span></div>${near?`<div class="notice warn mini"><b>Pick needed soon.</b> This game locks at kickoff.</div>`:''}${st.label==='MISSED'?`<div class="notice bad mini"><b>Missed pick.</b> It stays a loss unless Yasin authorizes a 5-minute late-pick override.</div>`:''}${ov?`<div class="notice warn mini"><b>Yasin reopened this game.</b> Save your team + margin before <span data-override-inline="${esc(ov.expiresAt)}">${fmtRemaining(new Date(ov.expiresAt).getTime()-nowMs())}</span>. It relocks as soon as the late pick is saved.</div>`:''}<div class="teams"><button class="team ${d.team===g.away?'selected':''}" data-pick="${g.id}|${g.away}" ${locked||busy?'disabled':''}>${rec(g.awayName,g.away,g.awayRecord)}</button><button class="team ${d.team===g.home?'selected':''}" data-pick="${g.id}|${g.home}" ${locked||busy?'disabled':''}>${rec(g.homeName,g.home,g.homeRecord)}</button></div><div class="margin-wrap"><span><b>Margin</b></span><input class="margin" type="number" min="1" max="99" inputmode="numeric" data-margin="${g.id}" value="${esc(d.margin)}" ${locked||busy?'disabled':''}></div>${liveLine}${revealedBlock(g)}</div>`;
   }).join('');
   const complete=Number(prog.picked)===Number(prog.total)&&Number(prog.total)>0;
-  return shell(`<div class="row between picks-heading"><div><div class="title">Week ${state.currentWeek} Picks</div><div class="sub">${games.length} games · ${lastScheduleSource}</div></div><button class="btn secondary compact schedule-btn" data-act="refresh-schedule" ${busy?'disabled':''}>↻ Schedule</button></div><div class="progress-card"><div class="row between"><b>Your progress</b><b>${prog.picked} / ${prog.total} picked</b></div><div class="progress-track"><span style="width:${prog.total?Math.min(100,(prog.picked/prog.total)*100):0}%"></span></div></div>${submitted(u.id)?`<div class="notice good-note">Submitted ✓ ${allSubmitted()?'Everyone is in, so all games are locked.':'Future games can still be updated until their kickoff or until everyone submits.'}</div>`:''}${cards}<button class="btn submit-btn" data-act="submit-week" ${!complete||busy?'disabled':''}>${submitted(u.id)?'Update Submission':'Submit Week'}</button>`,'picks');
+  return shell(`<div class="row between picks-heading"><div><div class="title">Week ${state.currentWeek} Picks</div><div class="sub">${games.length} games · ${lastScheduleSource}</div></div><button class="btn secondary compact schedule-btn" data-act="refresh-schedule" ${busy?'disabled':''}>↻ Schedule</button></div><div class="progress-card"><div class="row between"><b>Your progress</b><b>${prog.picked} / ${prog.total} picked</b></div><div class="progress-track"><span style="width:${prog.total?Math.min(100,(prog.picked/prog.total)*100):0}%"></span></div></div>${cards}${submitted(u.id)?`<div class="notice good-note submission-note">Submitted ✓ ${allSubmitted()?'Everyone is in, so all games are locked.':'Future games can still be updated until their kickoff or until everyone submits.'}</div>`:''}<button class="btn submit-btn" data-act="submit-week" ${!complete||busy?'disabled':''}>${submitted(u.id)?'Update Submission':'Submit Week'}</button>`,'picks');
 }
 function renderStandings(){
   const latest=[...(state?.history||[])].sort((a,b)=>Number(b.week)-Number(a.week))[0];
@@ -339,7 +347,7 @@ async function backgroundStateRefresh(force=false){
 }
 async function backgroundNFLRefresh(){if(refreshing||!session?.token||document.hidden)return;refreshing=true;try{await syncSchedule({quiet:true});}finally{refreshing=false}}
 
-if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./service-worker.js?v=0741').catch(()=>{});
+if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./service-worker.js?v=0750').catch(()=>{});
 boot();
 setInterval(updateCountdownLabels,1000);
 setInterval(()=>backgroundStateRefresh(false),15000);
