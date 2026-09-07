@@ -36,6 +36,8 @@ export const backend = {
   submitWeek(token){ return rpc('family_submit_week', {p_token:token}); },
   savePredictions(token, conference, superBowl){ return rpc('family_save_predictions',{p_token:token,p_conference:conference,p_super_bowl:superBowl}); },
   authorizeLatePick(token, targetPlayerId, gameId){ return rpc('family_authorize_late_pick',{p_token:token,p_target_player_id:targetPlayerId,p_game_id:gameId}); },
+  commissionerEditPick(token, targetPlayerId, gameId, team, margin, reason){ return rpc('family_commissioner_edit_pick',{p_token:token,p_target_player_id:targetPlayerId,p_game_id:gameId,p_team:team,p_margin:Number(margin),p_reason:reason}); },
+  markWeekResultSeen(token, week){ return rpc('family_mark_week_result_seen',{p_token:token,p_week:Number(week)}); },
   cancelLatePick(token, overrideId){ return rpc('family_cancel_late_pick',{p_token:token,p_override_id:overrideId}); },
   resetPin(token, targetPlayerId){ return rpc('family_reset_player_pin',{p_token:token,p_target_player_id:targetPlayerId}); },
   syncGames(token, games){ return rpc('family_sync_games',{p_token:token,p_games:games}); },

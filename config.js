@@ -2,5 +2,5 @@
 window.APP_CONFIG = {
   supabaseUrl: 'https://dnvinjelexuicqmlwsam.supabase.co',
   supabasePublishableKey: 'sb_publishable_SQfdgMc4oKT_oYF5ng7FIQ_01mtEW2X',
-  reportWebhookUrl: ''
+  reportWebhookUrl: 'https://dnvinjelexuicqmlwsam.supabase.co/functions/v1/send-weekly-report'
 };

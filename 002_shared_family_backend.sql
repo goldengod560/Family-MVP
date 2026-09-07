@@ -178,10 +178,10 @@ begin
 
   if v.pin_hash is null then
     update public.family_players
-      set pin_hash=crypt(p_pin,gen_salt('bf')),failed_attempts=0,lock_until=null
+      set pin_hash=extensions.crypt(p_pin,extensions.gen_salt('bf')),failed_attempts=0,lock_until=null
       where player_id=v.player_id;
     v_created := true;
-  elsif crypt(p_pin,v.pin_hash) <> v.pin_hash then
+  elsif extensions.crypt(p_pin,v.pin_hash) <> v.pin_hash then
     update public.family_players
       set failed_attempts=failed_attempts+1,
           lock_until=case when failed_attempts+1 >= 6 then now()+interval '5 minutes' else null end

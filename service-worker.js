@@ -1,4 +1,4 @@
-const CACHE = 'family-nfl-picks-v06';
+const CACHE = 'family-nfl-picks-v07';
 const ASSETS = ['./','./index.html','./styles.css','./config.js','./api.mjs','./app.js','./logic.mjs','./report.mjs','./manifest.webmanifest'];
 
 self.addEventListener('install', event => {
