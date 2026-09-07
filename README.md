@@ -61,3 +61,15 @@ The current schedule endpoint is useful for prototyping but is not an official g
 - Future/in-progress games no longer display fake `Final:` lines. In-progress scores are labeled `LIVE`; completed games are labeled `FINAL`.
 - Standings do not award or preview weekly points before the whole week is final.
 - v0.4 automatically detects v0.3 demo-final contamination, removes those fake results, and rolls back points that were added from them while preserving picks, PINs, submissions, and non-demo overrides.
+
+## v0.5 weekly report upgrade
+- Header now identifies v0.5.
+- After a scored week, the commissioner gets a Weekly Email Report card.
+- The report includes every final score, every family pick/margin, check winners, weekly points, season totals, leaderboard, and override count.
+- A commissioner can preview the exact report in the browser.
+- `report.mjs` creates a stable report snapshot so later changes do not silently alter the historical report.
+- A Supabase Edge Function + database migration are included for secure email delivery via Resend.
+- The report recipient stays in a backend secret rather than being exposed in public GitHub Pages source.
+- If the email backend is not configured yet, scoring/history still work; the report is retained locally and marked setup-required instead of pretending it was sent.
+
+See `EMAIL_REPORT_SETUP.md` for backend configuration.

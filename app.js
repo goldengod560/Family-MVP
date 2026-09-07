@@ -1,7 +1,8 @@
 import { PLAYERS, resolveGameChecks, normalizeChecks, playoffRoundMultiplier, predictionBonus, canAdminInspectPicks, shouldRevealToPlayers, getSuperBowlField, resolveSuperBowlChampion } from './logic.mjs';
+import { buildWeeklyReportData, buildWeeklyReportHtml } from './report.mjs';
 
 const KEY='family-nfl-picks-v01'; // preserve existing picks/PINs across prototype updates
-const SCHEMA_VERSION=4;
+const SCHEMA_VERSION=5;
 const DEMO_GAMES=[
   {id:'g1',away:'NE',awayName:'Patriots',awayRecord:'0-0',home:'SEA',homeName:'Seahawks',homeRecord:'0-0',kickoff:'2026-09-09T20:20:00-04:00',status:'scheduled',round:'regular'},
   {id:'g2',away:'SF',awayName:'49ers',awayRecord:'0-0',home:'LA',homeName:'Rams',homeRecord:'0-0',kickoff:'2026-09-10T20:35:00-04:00',status:'scheduled',round:'regular'},
@@ -91,9 +92,40 @@ async function tryLoadSchedule(){
   }catch{state.scheduleSource='demo';save();render()}
 }
 
+
+function reportWebhookUrl(){return String(window.APP_CONFIG?.reportWebhookUrl||'').trim()}
+function weeklyReportFor(w=wk(), weekNumber=state.currentWeek){
+  return buildWeeklyReportData({season:state.season,weekNumber,week:w,totals:state.totals});
+}
+async function deliverWeeklyReport(w=wk(), weekNumber=state.currentWeek){
+  const report=weeklyReportFor(w,weekNumber);
+  if(!report) return {ok:false,reason:'not-scored'};
+  w.report ||= {};
+  w.report.generatedAt=new Date().toISOString();
+  w.report.snapshot=report;
+  const url=reportWebhookUrl();
+  if(!url){w.report.status='setup-required';save();return {ok:false,reason:'setup-required'}}
+  w.report.status='sending';save();
+  try{
+    const r=await fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(report)});
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data=await r.json().catch(()=>({}));
+    w.report.status='sent';w.report.sentAt=new Date().toISOString();w.report.deliveryId=data?.id||null;w.report.error=null;save();
+    return {ok:true};
+  }catch(e){w.report.status='failed';w.report.error=String(e?.message||e);save();return {ok:false,reason:'failed'}}
+}
+function showReportPreview(){
+  const report=weeklyReportFor();
+  if(!report) return alert('Score the completed week first.');
+  const html=buildWeeklyReportHtml(report);
+  const win=window.open('','_blank');
+  if(!win) return alert('Your browser blocked the report preview. Allow pop-ups and try again.');
+  win.document.open();win.document.write(html);win.document.close();
+}
+
 function shell(content,active='home'){
   const u=user();
-  return `<div class="shell"><div class="topbar"><div><div class="brand">🏈 Family NFL Picks</div><div class="sub">2026 Season · Week ${state.currentWeek} · v0.4</div></div>${u?`<button class="btn secondary" data-act="logout">${esc(u.name)} ↗</button>`:''}</div>${content}</div>${u?`<div class="nav"><div class="nav-inner"><button data-nav="picks" class="${active==='picks'?'active':''}">Picks</button><button data-nav="standings" class="${active==='standings'?'active':''}">Standings</button><button data-nav="history" class="${active==='history'?'active':''}">History</button><button data-nav="predictions" class="${active==='predictions'?'active':''}">Predictions</button><button data-nav="commissioner" class="${active==='commissioner'?'active':''}">${u.admin?'Commish':'Status'}</button></div></div>`:''}`
+  return `<div class="shell"><div class="topbar"><div><div class="brand">🏈 Family NFL Picks</div><div class="sub">2026 Season · Week ${state.currentWeek} · v0.5</div></div>${u?`<button class="btn secondary" data-act="logout">${esc(u.name)} ↗</button>`:''}</div>${content}</div>${u?`<div class="nav"><div class="nav-inner"><button data-nav="picks" class="${active==='picks'?'active':''}">Picks</button><button data-nav="standings" class="${active==='standings'?'active':''}">Standings</button><button data-nav="history" class="${active==='history'?'active':''}">History</button><button data-nav="predictions" class="${active==='predictions'?'active':''}">Predictions</button><button data-nav="commissioner" class="${active==='commissioner'?'active':''}">${u.admin?'Commish':'Status'}</button></div></div>`:''}`
 }
 
 function renderHome(){
@@ -168,7 +200,7 @@ function renderCommissioner(){
  }
  const ready=weekReadyToScore(wk());
  const finalCount=finalGameCount(wk());
- return shell(`<div class="title">${admin?'Commissioner Dashboard':'Submission Status'}</div><div class="card"><div class="row between"><b>Week ${state.currentWeek}</b><span class="pill">${wk().overrides.length} override${wk().overrides.length===1?'':'s'}</span></div>${statuses}</div>${inspect}${admin?`<div class="card"><div class="section-title">Commissioner tools</div><div class="notice"><b>${finalCount} of ${(wk().games||[]).length} games final.</b><br>${wk().scoredAt?'This week has already been scored.':ready?'All games are final. You can score the week now.':'Scoring stays locked until every game is FINAL.'}</div><div class="row"><button class="btn secondary" data-act="score-week" ${wk().scoredAt||!ready?'disabled':''}>${wk().scoredAt?'Week Scored ✓':ready?'Score Completed Week':'Waiting for Finals'}</button><button class="btn secondary" data-act="reset-pin">Reset Player PIN</button></div><p class="tiny">There are no demo final scores in v0.4. Only confirmed final NFL results can be used for scoring. Commissioner overrides remain recorded in the weekly audit count.</p></div>`:''}`, 'commissioner');
+ return shell(`<div class="title">${admin?'Commissioner Dashboard':'Submission Status'}</div><div class="card"><div class="row between"><b>Week ${state.currentWeek}</b><span class="pill">${wk().overrides.length} override${wk().overrides.length===1?'':'s'}</span></div>${statuses}</div>${inspect}${admin?`<div class="card"><div class="section-title">Commissioner tools</div><div class="notice"><b>${finalCount} of ${(wk().games||[]).length} games final.</b><br>${wk().scoredAt?'This week has already been scored.':ready?'All games are final. You can score the week now.':'Scoring stays locked until every game is FINAL.'}</div><div class="row"><button class="btn secondary" data-act="score-week" ${wk().scoredAt||!ready?'disabled':''}>${wk().scoredAt?'Week Scored ✓':ready?'Score Completed Week':'Waiting for Finals'}</button><button class="btn secondary" data-act="reset-pin">Reset Player PIN</button></div><p class="tiny">There are no demo final scores in v0.5. Only confirmed final NFL results can be used for scoring. Commissioner overrides remain recorded in the weekly audit count.</p></div>${wk().scoredAt?`<div class="card"><div class="section-title">Weekly email report</div><div class="notice"><b>${wk().report?.status==='sent'?'Report sent ✓':wk().report?.status==='failed'?'Report delivery failed':reportWebhookUrl()?'Automatic report ready':'Backend email setup required'}</b><br>The report includes every final score, every player pick, check winners, weekly points, season totals, leaderboard, and override count.</div><div class="row"><button class="btn secondary" data-act="preview-report">Preview Report</button>${reportWebhookUrl()?`<button class="btn secondary" data-act="send-report">${wk().report?.status==='sent'?'Resend Report':'Send Report Now'}</button>`:''}</div><p class="tiny">In the finished shared version this is sent automatically after the week is finalized. The recipient address is stored privately on the backend, not in the public GitHub code.</p></div>`:''}`:''}`, 'commissioner');
 }
 
 function render(){
@@ -197,10 +229,23 @@ function bind(){
    if(a==='refresh-schedule'){await tryLoadSchedule()}
    if(a==='submit-week'){wk().submissions[user().id]={submittedAt:new Date().toISOString()};save();render()}
    if(a==='save-predictions'){const split=v=>v.split(',').map(x=>x.trim()).filter(Boolean);const c=split(document.querySelector('#confPred').value),s=split(document.querySelector('#sbPred').value);if(c.length!==4)return alert('Enter exactly 4 Conference Championship teams, separated by commas.');if(s.length!==2)return alert('Enter exactly 2 Super Bowl teams, separated by commas.');state.predictions.conference[user().id]=c;state.predictions.superBowl[user().id]=s;save();alert('Predictions saved.');render()}
-   if(a==='score-week'){if(!user().admin)return;if(wk().scoredAt)return alert('This week is already scored. It will not be added to the season total twice.');if(!weekReadyToScore())return alert('The week cannot be scored until every NFL game has a confirmed FINAL result.');const counts=weeklyCheckCounts();const mult=playoffRoundMultiplier(wk().round);const pts=normalizeChecks(counts,mult);PLAYERS.forEach(p=>state.totals[p.id]=(state.totals[p.id]||0)+pts[p.id]);const at=new Date().toISOString();wk().scoredAt=at;wk().scoreSummary={checks:counts,points:pts,multiplier:mult,scoredAt:at};state.historyWeek=String(state.currentWeek);save();alert('Week scored, added to season totals, and saved to History.');render()}
+   if(a==='score-week'){if(!user().admin)return;if(wk().scoredAt)return alert('This week is already scored. It will not be added to the season total twice.');if(!weekReadyToScore())return alert('The week cannot be scored until every NFL game has a confirmed FINAL result.');const counts=weeklyCheckCounts();const mult=playoffRoundMultiplier(wk().round);const pts=normalizeChecks(counts,mult);PLAYERS.forEach(p=>state.totals[p.id]=(state.totals[p.id]||0)+pts[p.id]);const at=new Date().toISOString();wk().scoredAt=at;wk().scoreSummary={checks:counts,points:pts,multiplier:mult,scoredAt:at};state.historyWeek=String(state.currentWeek);save();const delivery=await deliverWeeklyReport();alert(delivery.ok?'Week scored, saved to History, and weekly email report sent.':delivery.reason==='setup-required'?'Week scored and saved to History. Weekly email report is ready; connect the backend to send it automatically.':'Week scored and saved to History. Email delivery failed, but the report was kept for retry.');render()}
+   if(a==='preview-report'){if(!user().admin)return;showReportPreview()}
+   if(a==='send-report'){if(!user().admin)return;const delivery=await deliverWeeklyReport();alert(delivery.ok?'Weekly report sent.':delivery.reason==='setup-required'?'Connect the report backend first.':'Report delivery failed. Check the backend configuration and try again.');render()}
    if(a==='reset-pin'){if(!user().admin)return;const n=prompt('Whose PIN? Yasin, Yezan, Samer, or Limar');const p=PLAYERS.find(x=>x.name.toLowerCase()===String(n||'').toLowerCase());if(!p)return alert('Player not found.');delete state.pins[p.id];wk().overrides.push({type:'pin-reset',target:p.id,by:'yasin',at:new Date().toISOString()});save();alert(`${p.name}'s PIN will be recreated next login.`);render()}
  })
 }
 
 if('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('./service-worker.js').catch(()=>{});
 render();
+
+// While somebody has the app open, refresh NFL schedule/records/live status every 2 minutes
+// and whenever the tab regains focus. The production backend will do this even when no browser is open.
+let refreshingSchedule=false;
+async function backgroundScheduleRefresh(){
+  if(refreshingSchedule || !state.currentUser) return;
+  refreshingSchedule=true;
+  try{await tryLoadSchedule()}finally{refreshingSchedule=false}
+}
+setInterval(backgroundScheduleRefresh,120000);
+window.addEventListener('focus',()=>backgroundScheduleRefresh());
