@@ -1,1 +1,1 @@
-Upload ALL files in this folder to GitHub, replacing existing files. This hotfix forces browsers/service workers off v0.7.1 cache. No Supabase changes needed.
+Upload ALL files in this folder to GitHub, replacing existing files. This v0.7.3 UI polish also bumps cache/version so phones stop showing older mobile styling. No Supabase changes needed.
