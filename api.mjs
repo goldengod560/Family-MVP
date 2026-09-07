@@ -41,6 +41,8 @@ export const backend = {
   cancelLatePick(token, overrideId){ return rpc('family_cancel_late_pick',{p_token:token,p_override_id:overrideId}); },
   resetPin(token, targetPlayerId){ return rpc('family_reset_player_pin',{p_token:token,p_target_player_id:targetPlayerId}); },
   syncGames(token, games){ return rpc('family_sync_games',{p_token:token,p_games:games}); },
+  syncGamesForWeek(token, week, games){ return rpc('family_sync_games_for_week',{p_token:token,p_week:Number(week),p_games:games}); },
   tryScore(token){ return rpc('family_try_score_week',{p_token:token}); },
+  finishAndAdvanceWeek(token){ return rpc('family_finish_and_advance_week',{p_token:token}); },
   setWeek(token, week, round='regular'){ return rpc('family_set_current_week',{p_token:token,p_week:Number(week),p_round:round}); },
 };
