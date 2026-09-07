@@ -133,7 +133,7 @@ th{font-size:.75rem;color:#d5e4f6}
 
 
 /* v0.7.9 commish + leaderboard visibility */
-.team.selected{outline:2px solid #dff4ff;border-color:#9cdcff;background:#214f79;box-shadow:inset 0 0 0 1px rgba(255,255,255,.28),0 0 0 1px rgba(223,244,255,.26)}
+.team.selected{outline:4px solid #f7fcff;outline-offset:0;border-color:#eef8ff;background:#21507a;box-shadow:inset 0 0 0 2px rgba(255,255,255,.34),0 0 0 2px rgba(247,252,255,.24)}
 .status-card .status-row .tiny{color:#dbe8f8;font-weight:760}
 .status-card .status-row .pill{font-weight:900;letter-spacing:.01em}
 .status-card .status-row .pill.good{background:rgba(72,213,151,.12);border-color:rgba(72,213,151,.42);color:#67efac}
@@ -152,7 +152,7 @@ th{font-size:.75rem;color:#d5e4f6}
 
 
 /* v0.7.9 fixed cache + larger progress bar */
-.progress-track{height:10px}
+.progress-track{height:14px}
 @media(max-width:520px){
-  .progress-track{height:8px;margin-top:8px}
+  .progress-track{height:12px;margin-top:8px}
 }
