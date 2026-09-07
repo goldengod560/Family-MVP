@@ -3,7 +3,7 @@ import { backend, isConfigured } from './api.mjs';
 import { buildWeeklyReportFromSnapshot } from './report.mjs';
 
 const SESSION_KEY='family-nfl-session-v06';
-const APP_VERSION='0.7.6';
+const APP_VERSION='0.7.8';
 const RESULT_DISMISS_PREFIX='family-nfl-result-seen';
 let session=loadSession();
 let state=null;
@@ -347,7 +347,7 @@ async function backgroundStateRefresh(force=false){
 }
 async function backgroundNFLRefresh(){if(refreshing||!session?.token||document.hidden)return;refreshing=true;try{await syncSchedule({quiet:true});}finally{refreshing=false}}
 
-if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./service-worker.js?v=0760').catch(()=>{});
+if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./service-worker.js?v=0770').catch(()=>{});
 boot();
 setInterval(updateCountdownLabels,1000);
 setInterval(()=>backgroundStateRefresh(false),15000);
