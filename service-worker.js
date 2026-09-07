@@ -1,5 +1,5 @@
-const CACHE = 'family-nfl-picks-v05';
-const ASSETS = ['./','./index.html','./styles.css','./config.js','./app.js','./logic.mjs','./report.mjs','./manifest.webmanifest'];
+const CACHE = 'family-nfl-picks-v06';
+const ASSETS = ['./','./index.html','./styles.css','./config.js','./api.mjs','./app.js','./logic.mjs','./report.mjs','./manifest.webmanifest'];
 
 self.addEventListener('install', event => {
   self.skipWaiting();
@@ -17,6 +17,7 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
+  if (new URL(event.request.url).origin !== self.location.origin) return;
   event.respondWith(
     fetch(event.request)
       .then(response => {
