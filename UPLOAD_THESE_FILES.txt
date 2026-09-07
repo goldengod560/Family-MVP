@@ -1,1 +1,1 @@
-Upload ALL files in this folder to GitHub, replacing existing files. This v0.7.4 update only changes the GitHub app files and bumps the cache version so phones pull the new styling. No Supabase changes needed.
+Upload ALL files in this folder to GitHub, replacing existing files. v0.7.4.1 fixes the cache/version bug so the phone loads the v0.7.4 styling. No data is reset. Run the separate Supabase schedule-refresh hotfix once to repair the Schedule button.
