@@ -149,3 +149,10 @@ th{font-size:.75rem;color:#d5e4f6}
   .standings-card table th,.standings-card table td{font-size:.93rem;padding:12px 6px}
   .standings-card table th{font-size:.82rem;color:#ebf4ff}
 }
+
+
+/* v0.7.9 fixed cache + larger progress bar */
+.progress-track{height:10px}
+@media(max-width:520px){
+  .progress-track{height:8px;margin-top:8px}
+}
