@@ -149,8 +149,8 @@ async function loadSnapshot(){
 }
 function hydrateDrafts(){for(const g of state?.games||[]){const p=ownPick(g.id);drafts[g.id]={team:p?.team||drafts[g.id]?.team||'',margin:p?.margin??drafts[g.id]?.margin??''};}}
 
-async function fetchEspnGames(){
-  const season=state?.season||2026,week=state?.currentWeek||1;
+async function fetchEspnGames(requestedWeek=null){
+  const season=state?.season||2026,week=Number(requestedWeek??state?.currentWeek??1);
   const url=`https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates=${season}&seasontype=2&week=${week}`;
   const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw new Error('NFL schedule could not be loaded.');
   const d=await r.json();if(!Array.isArray(d.events)||!d.events.length)throw new Error('No NFL games returned for this week.');
@@ -160,10 +160,29 @@ async function fetchEspnGames(){
     return {id:String(e.id),away:a?.team?.abbreviation||'AWY',awayName:a?.team?.displayName||'Away',awayRecord:a?.records?.find(r=>r.type==='total')?.summary||a?.records?.[0]?.summary||'',home:h?.team?.abbreviation||'HME',homeName:h?.team?.displayName||'Home',homeRecord:h?.records?.find(r=>r.type==='total')?.summary||h?.records?.[0]?.summary||'',kickoff:e.date,status,final,awayScore:a?.score==null?null:Number(a.score),homeScore:h?.score==null?null:Number(h.score),round:'regular'};
   });
 }
-async function syncSchedule({quiet=false}={}){
+async function syncSchedule({quiet=false,retry=true}={}){
   if(!session?.token||!state)return;
+  const requestedWeek=Number(state.currentWeek||1);
   try{
-    const games=await fetchEspnGames();await backend.syncGames(session.token,games);await backend.tryScore(session.token);lastScheduleSource='NFL live feed';await loadSnapshot();if(!quiet)toast('NFL schedule, records, and scores refreshed.');
+    const games=await fetchEspnGames(requestedWeek);
+    const synced=await backend.syncGamesForWeek(session.token,requestedWeek,games);
+    if(synced?.status==='stale-week'){
+      await loadSnapshot();
+      if(retry)return syncSchedule({quiet,retry:false});
+      return render();
+    }
+    const finish=await backend.finishAndAdvanceWeek(session.token);
+    lastScheduleSource='NFL live feed';
+    await loadSnapshot();
+    const newWeek=Number(state.currentWeek||requestedWeek);
+    if(newWeek!==requestedWeek){
+      try{
+        const nextGames=await fetchEspnGames(newWeek);
+        await backend.syncGamesForWeek(session.token,newWeek,nextGames);
+        await loadSnapshot();
+      }catch{}
+      if(!quiet)toast(`Week ${requestedWeek} is complete. Week ${newWeek} is now active.`);
+    }else if(!quiet)toast('NFL schedule, records, and scores refreshed.');
   }catch(e){lastScheduleSource='Last saved schedule';if(!quiet)toast(`Schedule refresh failed: ${e.message}`);}
   render();
 }
@@ -182,11 +201,11 @@ async function maybeSendWeeklyEmail(){
 
 function shell(content,active='home'){
   const u=viewer(),backendLabel=isConfigured()?'Shared online':'Not connected';
-  return `<div class="shell"><div class="topbar"><div><div class="brand">🏈 Family NFL Picks</div><div class="sub">${state?.season||2026} Season · Week ${state?.currentWeek||1} · v0.7 · ${backendLabel}</div></div>${u?`<button class="btn secondary compact" data-act="logout">${esc(u.name)} ↗</button>`:''}</div>${content}</div>${u?`<div class="nav"><div class="nav-inner"><button data-nav="picks" class="${active==='picks'?'active':''}">Picks</button><button data-nav="standings" class="${active==='standings'?'active':''}">Standings</button><button data-nav="history" class="${active==='history'?'active':''}">History</button><button data-nav="predictions" class="${active==='predictions'?'active':''}">Predictions</button><button data-nav="commissioner" class="${active==='commissioner'?'active':''}">${u.admin?'Commish':'Status'}</button></div></div>`:''}${renderCelebration()}`;
+  return `<div class="shell"><div class="topbar"><div><div class="brand">🏈 Family NFL Picks</div><div class="sub">${state?.season||2026} Season · Week ${state?.currentWeek||1} · v0.7.1 · ${backendLabel}</div></div>${u?`<button class="btn secondary compact" data-act="logout">${esc(u.name)} ↗</button>`:''}</div>${content}</div>${u?`<div class="nav"><div class="nav-inner"><button data-nav="picks" class="${active==='picks'?'active':''}">Picks</button><button data-nav="standings" class="${active==='standings'?'active':''}">Standings</button><button data-nav="history" class="${active==='history'?'active':''}">History</button><button data-nav="predictions" class="${active==='predictions'?'active':''}">Predictions</button><button data-nav="commissioner" class="${active==='commissioner'?'active':''}">${u.admin?'Commish':'Status'}</button></div></div>`:''}${renderCelebration()}`;
 }
 function renderHome(){
   const warn=!isConfigured()?`<div class="notice warn">Supabase is not configured yet.</div>`:'';
-  return shell(`<div class="card"><div class="title">Who’s picking?</div><p class="sub">Choose your name and enter your 4-digit PIN.</p><div class="grid">${PLAYERS.map(p=>`<button class="player ${p.admin?'admin':''}" data-player="${p.id}" ${busy?'disabled':''}>${p.name}</button>`).join('')}</div></div>${warn}<div class="notice"><b>v0.7 shared mode:</b> all four phones share picks, progress, standings, History, and transparent commissioner overrides.</div>`);
+  return shell(`<div class="card"><div class="title">Who’s picking?</div><p class="sub">Choose your name and enter your 4-digit PIN.</p><div class="grid">${PLAYERS.map(p=>`<button class="player ${p.admin?'admin':''}" data-player="${p.id}" ${busy?'disabled':''}>${p.name}</button>`).join('')}</div></div>${warn}<div class="notice"><b>v0.7.1 shared mode:</b> all four phones share picks, progress, standings, History, and transparent commissioner overrides.</div>`);
 }
 function revealedBlock(g){
   if(!revealedForPlayers(g))return '';
@@ -201,10 +220,10 @@ function renderPicks(){
     const liveLine=g.final?`<div class="score-line final">FINAL · ${g.away} ${g.awayScore} · ${g.home} ${g.homeScore}</div>`:(g.status==='in'&&Number.isFinite(Number(g.awayScore))&&Number.isFinite(Number(g.homeScore))?`<div class="score-line live">LIVE · ${g.away} ${g.awayScore} · ${g.home} ${g.homeScore}</div>`:'');
     const rec=(name,abbr,record)=>`${esc(name)}<span class="record-line">${esc(abbr)}${record?` · ${esc(record)}`:''}</span>`;
     const statusAttr=st.until?` data-countdown-until="${esc(st.until)}" data-countdown-type="${st.kind||'override'}"`:'';
-    return `<div class="game ${locked?'lock':''} ${near?'urgent':''}"><div class="game-head"><span>${fmtKickoff(g.kickoff)}</span><span class="status-pill ${st.cls}"${statusAttr}>${esc(st.label)}</span></div>${near?`<div class="notice warn mini"><b>Pick needed soon.</b> This game locks at kickoff.</div>`:''}${st.label==='MISSED'?`<div class="notice bad mini"><b>Missed pick.</b> It stays a loss unless Yasin authorizes a 5-minute late-pick override.</div>`:''}${ov?`<div class="notice warn mini"><b>Yasin reopened this game.</b> Save your team + margin before <span data-override-inline="${esc(ov.expiresAt)}">${fmtRemaining(new Date(ov.expiresAt).getTime()-nowMs())}</span>. It relocks as soon as the late pick is saved.</div>`:''}<div class="teams"><button class="team ${d.team===g.away?'selected':''}" data-pick="${g.id}|${g.away}" ${locked||busy?'disabled':''}>${rec(g.awayName,g.away,g.awayRecord)}</button><button class="team ${d.team===g.home?'selected':''}" data-pick="${g.id}|${g.home}" ${locked||busy?'disabled':''}>${rec(g.homeName,g.home,g.homeRecord)}</button></div><div class="margin-wrap"><span><b>Winning margin</b><br><span class="tiny">Always enter it; ignored when not needed.</span></span><input class="margin" type="number" min="1" max="99" inputmode="numeric" data-margin="${g.id}" value="${esc(d.margin)}" ${locked||busy?'disabled':''}></div>${liveLine}${revealedBlock(g)}</div>`;
+    return `<div class="game ${locked?'lock':''} ${near?'urgent':''}"><div class="game-head"><span>${fmtKickoff(g.kickoff)}</span><span class="status-pill ${st.cls}"${statusAttr}>${esc(st.label)}</span></div>${near?`<div class="notice warn mini"><b>Pick needed soon.</b> This game locks at kickoff.</div>`:''}${st.label==='MISSED'?`<div class="notice bad mini"><b>Missed pick.</b> It stays a loss unless Yasin authorizes a 5-minute late-pick override.</div>`:''}${ov?`<div class="notice warn mini"><b>Yasin reopened this game.</b> Save your team + margin before <span data-override-inline="${esc(ov.expiresAt)}">${fmtRemaining(new Date(ov.expiresAt).getTime()-nowMs())}</span>. It relocks as soon as the late pick is saved.</div>`:''}<div class="teams"><button class="team ${d.team===g.away?'selected':''}" data-pick="${g.id}|${g.away}" ${locked||busy?'disabled':''}>${rec(g.awayName,g.away,g.awayRecord)}</button><button class="team ${d.team===g.home?'selected':''}" data-pick="${g.id}|${g.home}" ${locked||busy?'disabled':''}>${rec(g.homeName,g.home,g.homeRecord)}</button></div><div class="margin-wrap"><span><b>Margin</b><br><span class="tiny">Always enter; ignored when not needed.</span></span><input class="margin" type="number" min="1" max="99" inputmode="numeric" data-margin="${g.id}" value="${esc(d.margin)}" ${locked||busy?'disabled':''}></div>${liveLine}${revealedBlock(g)}</div>`;
   }).join('');
   const complete=Number(prog.picked)===Number(prog.total)&&Number(prog.total)>0;
-  return shell(`<div class="row between"><div><div class="title">Week ${state.currentWeek} Picks</div><div class="sub">${games.length} games · ${lastScheduleSource}</div></div><button class="btn secondary compact" data-act="refresh-schedule" ${busy?'disabled':''}>↻ Schedule</button></div><div class="progress-card"><div class="row between"><b>Your progress</b><b>${prog.picked} / ${prog.total} picked</b></div><div class="progress-track"><span style="width:${prog.total?Math.min(100,(prog.picked/prog.total)*100):0}%"></span></div></div>${submitted(u.id)?`<div class="notice good-note">Submitted ✓ ${allSubmitted()?'Everyone is in, so all games are locked.':'Future games can still be updated until their kickoff or until everyone submits.'}</div>`:''}${cards}<button class="btn" data-act="submit-week" ${!complete||busy?'disabled':''}>${submitted(u.id)?'Update Submission':'Submit Week'}</button>`,'picks');
+  return shell(`<div class="row between picks-heading"><div><div class="title">Week ${state.currentWeek} Picks</div><div class="sub">${games.length} games · ${lastScheduleSource}</div></div><button class="btn secondary compact schedule-btn" data-act="refresh-schedule" ${busy?'disabled':''}>↻ Schedule</button></div><div class="progress-card"><div class="row between"><b>Your progress</b><b>${prog.picked} / ${prog.total} picked</b></div><div class="progress-track"><span style="width:${prog.total?Math.min(100,(prog.picked/prog.total)*100):0}%"></span></div></div>${submitted(u.id)?`<div class="notice good-note">Submitted ✓ ${allSubmitted()?'Everyone is in, so all games are locked.':'Future games can still be updated until their kickoff or until everyone submits.'}</div>`:''}${cards}<button class="btn" data-act="submit-week" ${!complete||busy?'disabled':''}>${submitted(u.id)?'Update Submission':'Submit Week'}</button>`,'picks');
 }
 function renderStandings(){
   const latest=[...(state?.history||[])].sort((a,b)=>Number(b.week)-Number(a.week))[0];
@@ -252,12 +271,12 @@ function renderOverrideControls(g){
   return `<div class="divider"></div><div class="tiny"><b>Override controls</b></div>${rows}`;
 }
 function renderCommissioner(){
-  const u=viewer(),admin=u.admin,overrideLog=renderOverrideLog(state.overrides?.all||[],state.games||[]);
-  if(!admin)return shell(`<div class="title">Week ${state.currentWeek} Status</div><div class="card">${statusRows()}</div><div class="section-title">Commissioner Overrides</div><p class="sub">Visible to everyone for fairness.</p>${overrideLog}`,'commissioner');
+  const u=viewer(),admin=u.admin,overrideLog=renderOverrideLog(state.overrides?.all||[],state.games||[]),openWide=window.innerWidth>520?' open':'';
+  if(!admin)return shell(`<div class="title">Week ${state.currentWeek} Status</div><div class="card status-card">${statusRows()}</div><details class="compact-details"${openWide}><summary>Override Activity <span class="pill">${state.overrides?.count||0}</span></summary><p class="sub">Visible to everyone for fairness.</p>${overrideLog}</details>`,'commissioner');
   const allowInspect=submitted('yasin');
-  const review=allowInspect?`<div class="section-title">Commissioner Review</div>${(state.games||[]).map(g=>`<div class="game"><div class="row between"><b>${g.away} @ ${g.home}</b><span class="tiny">${fmtKickoff(g.kickoff)}</span></div>${PLAYERS.map(p=>{const x=visiblePick(p.id,g.id);return `<div class="row between review-pick"><span>${p.name}</span><span>${x?`${x.team} by ${x.margin}${x.lateOverride?' ⚠️':''}`:'—'}</span></div>`}).join('')}${renderOverrideControls(g)}</div>`).join('')}`:`<div class="notice warn">You can see everyone's progress, but you cannot inspect their actual picks until <b>you submit your own Week ${state.currentWeek} picks</b>.</div>`;
+  const review=allowInspect?`<details class="compact-details review-details"${openWide}><summary>Commissioner Review</summary><div class="details-body">${(state.games||[]).map(g=>`<div class="game review-game"><div class="row between"><b>${g.away} @ ${g.home}</b><span class="tiny">${fmtKickoff(g.kickoff)}</span></div>${PLAYERS.map(p=>{const x=visiblePick(p.id,g.id);return `<div class="row between review-pick"><span>${p.name}</span><span>${x?`${x.team} by ${x.margin}${x.lateOverride?' ⚠️':''}`:'—'}</span></div>`}).join('')}${renderOverrideControls(g)}</div>`).join('')}</div></details>`:`<div class="notice warn">You can see everyone's progress, but you cannot inspect their actual picks until <b>you submit your own Week ${state.currentWeek} picks</b>.</div>`;
   const scoreStatus=currentWeekScored()?'Week scored automatically ✓':`${finalCount()} of ${(state.games||[]).length} games final`;
-  return shell(`<div class="title">Commissioner Dashboard</div><div class="card"><div class="row between"><b>Week ${state.currentWeek} Status</b><span class="pill">${state.overrides?.count||0} override${Number(state.overrides?.count||0)===1?'':'s'}</span></div>${statusRows()}</div>${review}<div class="section-title">Override Activity</div><p class="sub">Everyone can see these same override records on their Status page.</p>${overrideLog}<div class="card"><div class="section-title">Commissioner tools</div><div class="notice"><b>${scoreStatus}</b><br>v0.7 automatically tries to score when every NFL game is FINAL.</div><div class="row tool-row"><button class="btn secondary" data-act="refresh-schedule" ${busy?'disabled':''}>Refresh NFL Data</button><button class="btn secondary" data-act="reset-pin" ${busy?'disabled':''}>Reset Player PIN</button></div><div class="divider"></div><div class="row between"><span>Current week</span><button class="btn secondary" data-act="change-week" ${busy?'disabled':''}>Change Week</button></div><p class="tiny">Late Pick opens one missed game for exactly 5 minutes and relocks immediately after the player saves the pick. Commissioner Edit changes an already locked pick and requires a reason. Both are permanently visible.</p></div>`,'commissioner');
+  return shell(`<div class="title">Commissioner Dashboard</div><div class="card status-card"><div class="row between"><b>Week ${state.currentWeek} Status</b><span class="pill">${state.overrides?.count||0} override${Number(state.overrides?.count||0)===1?'':'s'}</span></div>${statusRows()}</div>${review}<details class="compact-details"${openWide}><summary>Override Activity <span class="pill">${state.overrides?.count||0}</span></summary><div class="details-body"><p class="sub">Everyone can see these same override records on their Status page.</p>${overrideLog}</div></details><details class="compact-details"${openWide}><summary>Commissioner Tools</summary><div class="details-body"><div class="notice"><b>${scoreStatus}</b><br>When every NFL game is FINAL, the week scores automatically and the next regular-season week becomes active.</div><div class="row tool-row"><button class="btn secondary" data-act="refresh-schedule" ${busy?'disabled':''}>Refresh NFL Data</button><button class="btn secondary" data-act="reset-pin" ${busy?'disabled':''}>Reset Player PIN</button></div><p class="tiny">Late Pick opens one missed game for exactly 5 minutes and relocks immediately after the player saves the pick. Commissioner Edit changes an already locked pick and requires a reason. Both are permanently visible.</p></div></details>`,'commissioner');
 }
 function render(){
   let html;if(!session?.token||!state)html=renderHome();else if(screen==='standings')html=renderStandings();else if(screen==='history')html=renderHistory();else if(screen==='predictions')html=renderPredictions();else if(screen==='commissioner')html=renderCommissioner();else html=renderPicks();
@@ -296,7 +315,6 @@ function bind(){
     if(a==='submit-week'){setBusy(true);try{const r=await backend.submitWeek(session.token);if(!r?.ok)throw new Error(r?.error||'Submission failed.');await loadSnapshot();toast('Picks submitted.');}catch(e){toast(e.message||String(e))}finally{busy=false;render()}return;}
     if(a==='save-predictions'){const split=v=>v.split(',').map(x=>x.trim()).filter(Boolean),c=split(document.querySelector('#confPred').value),s=split(document.querySelector('#sbPred').value);setBusy(true);try{const r=await backend.savePredictions(session.token,c,s);if(!r?.ok)throw new Error(r?.error||'Could not save predictions.');await loadSnapshot();toast('Predictions saved.');}catch(e){toast(e.message||String(e))}finally{busy=false;render()}return;}
     if(a==='reset-pin'){const n=prompt('Reset whose PIN? Yasin, Yezan, Samer, or Limar'),p=PLAYERS.find(x=>x.name.toLowerCase()===String(n||'').trim().toLowerCase());if(!p)return toast('Player not found.');if(!confirm(`Reset ${p.name}'s PIN? They will create a new 4-digit PIN next login.`))return;setBusy(true);try{const r=await backend.resetPin(session.token,p.id);if(!r?.ok)throw new Error(r?.error||'PIN reset failed.');toast(`${p.name}'s PIN was reset.`);if(p.id===viewer().id){session=null;state=null;saveSession();screen='home';}}catch(e){toast(e.message||String(e))}finally{busy=false;render()}return;}
-    if(a==='change-week'){const w=prompt('Enter the week number to open:',String(state.currentWeek));if(!w)return;const n=Number(w);if(!Number.isInteger(n))return toast('Enter a whole week number.');setBusy(true);try{const r=await backend.setWeek(session.token,n,'regular');if(!r?.ok)throw new Error(r?.error||'Week change failed.');await loadSnapshot();await syncSchedule({quiet:true});toast(`Week ${n} is now active.`);}catch(e){toast(e.message||String(e))}finally{busy=false;render()}return;}
   });
 }
 
