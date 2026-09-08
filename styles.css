@@ -447,3 +447,73 @@ th,td{border-bottom-color:#CFC2AC}
   .team{border-width:1.5px}
   .team.selected{outline-width:2px}
 }
+
+
+/* v0.8.3 — refined light-theme contrast per feedback */
+.progress-card b,
+.progress-card b:last-child{
+  color:#171717;
+}
+
+/* clearer selected team without harsh black outline */
+.team.selected{
+  background:#CBB57F;
+  color:#171717;
+  border-color:#A28A5A;
+  outline:none;
+  box-shadow:inset 0 0 0 2px rgba(255,255,255,.34), 0 0 0 2px rgba(162,138,90,.72), 0 3px 8px rgba(50,38,20,.12);
+}
+
+/* default notes now stand apart better in the light theme */
+.notice{
+  background:#F8F4EB;
+  color:#2F2A24;
+  border:1.5px solid #7FA281;
+  border-left:4px solid #2F7D56;
+}
+.notice.good-note{
+  background:#EAF6EE;
+  color:#214D36;
+  border:1.5px solid #6EA07C;
+  border-left:4px solid #2F7D56;
+}
+
+/* standings headers should read like the rest of the text */
+.standings-card table th,
+.standings-card th,
+th{
+  color:#171717;
+}
+
+/* darker submitted pills with lighter text */
+.status-card .status-row .pill.good,
+.pill.good{
+  background:#2F7D56;
+  color:#F6FBF8;
+  border-color:#2F7D56;
+}
+
+/* keep warning / incomplete pill readable in light theme */
+.status-card .status-row .pill.warn,
+.pill.warn{
+  background:#FFF3DD;
+  color:#8A5B0D;
+  border-color:#D0A255;
+}
+
+/* make small status text in commissioner box easier to read */
+.status-card .status-row .tiny{
+  color:#5B5146;
+  font-weight:780;
+}
+
+/* buttons + form elements stay crisp */
+.btn{
+  border-color:#8E784A;
+}
+
+@media(max-width:520px){
+  .team.selected{
+    box-shadow:inset 0 0 0 2px rgba(255,255,255,.3), 0 0 0 2px rgba(162,138,90,.72), 0 2px 6px rgba(50,38,20,.1);
+  }
+}
