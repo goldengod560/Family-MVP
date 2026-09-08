@@ -133,7 +133,7 @@ th{font-size:.75rem;color:#d5e4f6}
 
 
 /* v0.7.9 commish + leaderboard visibility */
-.team.selected{outline:3px solid #eef8ff;border-color:#d7efff;background:#214f79;box-shadow:inset 0 0 0 1px rgba(255,255,255,.30),0 0 0 1px rgba(238,248,255,.18)}
+.team.selected{outline:2px solid #eef8ff;border-color:#d7efff;background:#214f79;box-shadow:inset 0 0 0 1px rgba(255,255,255,.22),0 0 0 1px rgba(238,248,255,.12)}
 .status-card .status-row .tiny{color:#dbe8f8;font-weight:760}
 .status-card .status-row .pill{font-weight:900;letter-spacing:.01em}
 .status-card .status-row .pill.good{background:rgba(72,213,151,.12);border-color:rgba(72,213,151,.42);color:#67efac}
