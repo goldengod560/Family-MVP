@@ -3,7 +3,7 @@ import { backend, isConfigured } from './api.mjs';
 import { buildWeeklyReportFromSnapshot } from './report.mjs';
 
 const SESSION_KEY='family-nfl-session-v06';
-const APP_VERSION='0.7.9';
+const APP_VERSION='0.8';
 const RESULT_DISMISS_PREFIX='family-nfl-result-seen';
 let session=loadSession();
 let state=null;
@@ -66,6 +66,21 @@ function gameStatus(g){
   return {label:`LOCKS IN ${fmtRemaining(timeToKickoff(g))}`,cls:'',until:g.kickoff,kind:'game'};
 }
 function toast(msg){alert(msg)}
+function submissionToast(){
+  const old=document.querySelector('.submission-toast');
+  if(old)old.remove();
+  const el=document.createElement('div');
+  el.className='submission-toast';
+  el.setAttribute('role','status');
+  el.setAttribute('aria-live','polite');
+  el.innerHTML=`<div class="submission-toast-icon">✓</div><div><b>Week ${state?.currentWeek||1} picks submitted</b><span>Your picks are saved.</span></div>`;
+  document.body.appendChild(el);
+  requestAnimationFrame(()=>el.classList.add('show'));
+  setTimeout(()=>{
+    el.classList.remove('show');
+    setTimeout(()=>el.remove(),220);
+  },3200);
+}
 function setBusy(v){busy=v;render()}
 
 function historySortedAsc(){return [...(state?.history||[])].sort((a,b)=>Number(a.week)-Number(b.week))}
@@ -320,7 +335,7 @@ function bind(){
     const a=b.dataset.act;
     if(a==='logout'){try{await backend.logout(session.token)}catch{}session=null;state=null;celebration=null;saveSession();screen='home';render();return;}
     if(a==='refresh-schedule'){setBusy(true);await syncSchedule({quiet:false});busy=false;render();return;}
-    if(a==='submit-week'){setBusy(true);try{const r=await backend.submitWeek(session.token);if(!r?.ok)throw new Error(r?.error||'Submission failed.');await loadSnapshot();toast('Picks submitted.');}catch(e){toast(e.message||String(e))}finally{busy=false;render()}return;}
+    if(a==='submit-week'){setBusy(true);try{const r=await backend.submitWeek(session.token);if(!r?.ok)throw new Error(r?.error||'Submission failed.');await loadSnapshot();submissionToast();}catch(e){toast(e.message||String(e))}finally{busy=false;render()}return;}
     if(a==='save-predictions'){const split=v=>v.split(',').map(x=>x.trim()).filter(Boolean),c=split(document.querySelector('#confPred').value),s=split(document.querySelector('#sbPred').value);setBusy(true);try{const r=await backend.savePredictions(session.token,c,s);if(!r?.ok)throw new Error(r?.error||'Could not save predictions.');await loadSnapshot();toast('Predictions saved.');}catch(e){toast(e.message||String(e))}finally{busy=false;render()}return;}
     if(a==='reset-pin'){const n=prompt('Reset whose PIN? Yasin, Yezan, Samer, or Limar'),p=PLAYERS.find(x=>x.name.toLowerCase()===String(n||'').trim().toLowerCase());if(!p)return toast('Player not found.');if(!confirm(`Reset ${p.name}'s PIN? They will create a new 4-digit PIN next login.`))return;setBusy(true);try{const r=await backend.resetPin(session.token,p.id);if(!r?.ok)throw new Error(r?.error||'PIN reset failed.');toast(`${p.name}'s PIN was reset.`);if(p.id===viewer().id){session=null;state=null;saveSession();screen='home';}}catch(e){toast(e.message||String(e))}finally{busy=false;render()}return;}
   });
@@ -347,7 +362,7 @@ async function backgroundStateRefresh(force=false){
 }
 async function backgroundNFLRefresh(){if(refreshing||!session?.token||document.hidden)return;refreshing=true;try{await syncSchedule({quiet:true});}finally{refreshing=false}}
 
-if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./service-worker.js?v=0799p5').catch(()=>{});
+if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./service-worker.js?v=0800').catch(()=>{});
 boot();
 setInterval(updateCountdownLabels,1000);
 setInterval(()=>backgroundStateRefresh(false),15000);
