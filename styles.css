@@ -328,3 +328,122 @@ th,td{border-bottom-color:#E1D9CB}
 }
 .submission-toast-icon{background:#E7F5EC;border-color:rgba(47,125,86,.35);color:#2F7D56}
 .submission-toast span{color:#58695E}
+
+
+/* v0.8.2 — Warm Cream + Black + Saints Gold, stronger contrast */
+:root{
+  --bg:#F7F3EA;
+  --panel:#FFFFFF;
+  --panel2:#EAE3D5;
+  --text:#171717;
+  --muted:#5E564C;
+  --line:#B9AA90;
+  --accent:#C7B07A;
+}
+body{
+  background:linear-gradient(180deg,#F7F3EA 0%,#EFE6D5 52%,#F7F3EA 100%);
+}
+.page-divider{background:#BDAF97}
+.card{
+  background:#FFFFFF;
+  border:1.5px solid #C6B79D;
+  box-shadow:0 12px 28px rgba(52,43,30,.12);
+}
+.progress-card{
+  background:#FFFDF8;
+  border:1.5px solid #BFAF94;
+}
+.progress-track{background:#D8CBB6}
+.progress-track span{background:#A28A5A}
+
+.game{
+  background:#EFE7D9;
+  border:1.5px solid #B8A98E;
+  box-shadow:0 5px 14px rgba(52,43,30,.10);
+}
+.game-head{color:#4E463D}
+.status-pill{
+  background:#FFFDF8;
+  color:#4A433A;
+  border-color:#AFA083;
+}
+.team{
+  background:#FFFFFF;
+  color:#171717;
+  border:1.5px solid #B8A98E;
+}
+.team.selected{
+  background:#A28A5A;
+  color:#111111;
+  border-color:#171717;
+  outline:2px solid #171717;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.30),0 3px 8px rgba(50,38,20,.14);
+}
+.record-line{color:#4E463D}
+.margin,.pin,.field,.text-area{
+  background:#FFFFFF;
+  border-color:#AA9B81;
+}
+
+.btn{
+  background:#A28A5A;
+  color:#111111;
+  border:1px solid #7E6B45;
+}
+.btn.secondary{
+  background:#FFFFFF;
+  color:#171717;
+  border:1.5px solid #B8A98E;
+}
+
+.pill{
+  background:#F2EBDD;
+  color:#4E463D;
+  border-color:#B9AA90;
+}
+.compact-details{
+  background:#FFFFFF;
+  border:1.5px solid #B8A98E;
+}
+.override-card,.override-detail,.stat,.leader-row{
+  background:#F4EBDD;
+  border-color:#B8A98E;
+}
+.history-score span,.week-chip{
+  background:#EFE7D9;
+  border-color:#B8A98E;
+}
+
+/* Dark nav gives the light theme a visual anchor and stops everything blending together. */
+.nav{
+  background:#171717;
+  border-top:2px solid #A28A5A;
+  box-shadow:0 -8px 24px rgba(0,0,0,.16);
+}
+.nav button{color:#D8D0C3}
+.nav button.active{color:#D9BE7C}
+
+/* Header controls get clearer edges. */
+.topbar .btn.secondary,.schedule-btn{
+  background:#FFFFFF;
+  border-color:#A28A5A;
+}
+
+/* Stronger table separation. */
+.standings-card{
+  border-color:#B8A98E;
+}
+th{color:#4D453B}
+th,td{border-bottom-color:#CFC2AC}
+
+/* Keep semantic states vivid. */
+.status-card .status-row .pill.good,.pill.good{background:#E9F6EE;color:#226744;border-color:#69A983}
+.status-card .status-row .pill.warn,.pill.warn{background:#FFF2D8;color:#8E5A08;border-color:#D0A255}
+.notice.good-note{background:#EAF6EE;color:#214D36;border-left-color:#2F7D56}
+
+@media(max-width:520px){
+  .card{border-width:1.5px}
+  .game{border-width:1.5px}
+  .team{border-width:1.5px}
+  .team.selected{outline-width:2px}
+}
