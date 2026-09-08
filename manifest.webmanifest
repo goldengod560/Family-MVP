@@ -3,7 +3,7 @@
   "short_name":"NFL Picks",
   "start_url":"./",
   "display":"standalone",
-  "background_color":"#08101d",
-  "theme_color":"#0b1220",
+  "background_color":"#F7F3EA",
+  "theme_color":"#F7F3EA",
   "icons":[]
 }

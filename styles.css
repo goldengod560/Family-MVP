@@ -200,3 +200,131 @@ th{font-size:.75rem;color:#d5e4f6}
   .submission-toast b{font-size:.88rem}
   .submission-toast span{font-size:.74rem}
 }
+
+
+/* v0.8.1 — Warm Cream + Black + Saints Gold theme
+   Exact requested palette:
+   Text #171717 | Background #F7F3EA | Primary #A28A5A | Secondary #EAE3D5 | Accent #C7B07A
+*/
+:root{
+  --bg:#F7F3EA;
+  --panel:#FFFFFF;
+  --panel2:#EAE3D5;
+  --text:#171717;
+  --muted:#6F675B;
+  --line:#D4CBBB;
+  --accent:#C7B07A;
+  --good:#2F7D56;
+  --warn:#A86E17;
+  --bad:#B8424D;
+  --live:#B85B2C;
+}
+html{background:#F7F3EA}
+body{
+  background:linear-gradient(180deg,#F7F3EA 0%,#F2EBDD 54%,#F7F3EA 100%);
+  color:#171717;
+}
+.title,.brand,.section-title,.status-card-title{color:#171717}
+.sub,.tiny,.game-head,.record-line,th{color:#6F675B}
+.page-divider{background:#D7CEBE}
+
+.card{
+  background:#FFFFFF;
+  border-color:#D4CBBB;
+  box-shadow:0 14px 34px rgba(70,58,38,.10);
+}
+.compact-details{
+  background:#FFFFFF;
+  border-color:#D4CBBB;
+}
+.compact-details>summary::after{color:#766B5D}
+
+.btn{background:#A28A5A;color:#171717}
+.btn.secondary{background:#EAE3D5;color:#171717;border-color:#CFC3AE}
+.player{background:#EAE3D5;color:#171717;border-color:#CFC3AE}
+.player.admin::after{color:#8A7447}
+
+.game{
+  background:#FFFDF9;
+  border-color:#D5C8B2;
+  box-shadow:0 5px 14px rgba(70,58,38,.07);
+}
+.game.urgent{border-color:#A86E17;box-shadow:0 0 0 1px rgba(168,110,23,.13)}
+.team{
+  background:#EAE3D5;
+  color:#171717;
+  border-color:#CDBFA8;
+}
+.team.selected{
+  background:#C7B07A;
+  color:#171717;
+  border-color:#A28A5A;
+  outline:2px solid #A28A5A;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.35),0 2px 7px rgba(90,72,39,.12);
+}
+.record-line{color:#665F55}
+.margin,.pin,.field,.text-area{
+  background:#FFFFFF;
+  color:#171717;
+  border-color:#CFC3AE;
+}
+
+.progress-card{background:#FFFFFF;border-color:#D4CBBB}
+.progress-track{background:#DDD4C4}
+.progress-track span{background:#A28A5A}
+
+.pill{
+  background:#F2ECE1;
+  color:#6F675B;
+  border-color:#D4CBBB;
+}
+.status-pill{color:#6F675B;border-color:#D4CBBB;background:#FBF8F1}
+.pill.good{color:#2F7D56;border-color:rgba(47,125,86,.35);background:#EDF7F1}
+.pill.warn{color:#A86E17;border-color:rgba(168,110,23,.35);background:#FFF7E7}
+.status-pill.good{color:#2F7D56}
+.status-pill.warn{color:#A86E17}
+.status-pill.bad{color:#B8424D}
+.status-pill.live{color:#B85B2C}
+
+.notice{background:#F1EBDD;color:#3B352D;border-left-color:#A28A5A}
+.notice.warn{background:#FFF7E7;border-left-color:#A86E17}
+.notice.bad{background:#FFF0F1;border-left-color:#B8424D}
+.notice.good-note{background:#EDF7F1;color:#245B40;border-left-color:#2F7D56}
+
+.override-card,.override-detail,.stat,.leader-row{background:#FBF8F1;border-color:#D4CBBB}
+.history-score span{background:#EAE3D5;border-color:#CFC3AE}
+.week-chip{background:#EAE3D5;color:#6F675B;border-color:#CFC3AE}
+.week-chip.active{background:#A28A5A;color:#171717;border-color:#A28A5A}
+
+.nav{
+  background:rgba(250,247,240,.97);
+  border-top-color:#D4CBBB;
+  box-shadow:0 -8px 24px rgba(70,58,38,.08);
+}
+.nav button{color:#786F63}
+.nav button.active{color:#8A7447}
+
+.modal,.result-overlay{background:rgba(23,23,23,.42)}
+.modal-box,.result-modal{background:#FFFDF9;border-color:#D4CBBB;color:#171717}
+.result-close{background:rgba(23,23,23,.08);color:#171717}
+.result-sub{color:#6F675B}
+.result-kicker{color:#8A7447}
+.result-points{color:#2F7D56}
+.result-points span{color:#6F675B}
+
+.status-card .status-row .tiny{color:#6F675B}
+.status-card .status-row .pill.good{background:#EDF7F1;border-color:rgba(47,125,86,.35);color:#2F7D56}
+.status-card .status-row .pill.warn{background:#FFF7E7;border-color:rgba(168,110,23,.35);color:#A86E17}
+.status-row{border-bottom-color:#E1D9CB}
+th,td{border-bottom-color:#E1D9CB}
+.movement{color:#837A6E}
+
+/* Submission popup stays semantic green, but now matches the light theme. */
+.submission-toast{
+  background:#F7FFF9;
+  color:#171717;
+  border-color:rgba(47,125,86,.40);
+  box-shadow:0 14px 34px rgba(70,58,38,.16);
+}
+.submission-toast-icon{background:#E7F5EC;border-color:rgba(47,125,86,.35);color:#2F7D56}
+.submission-toast span{color:#58695E}
