@@ -579,3 +579,37 @@ th{
 .pick-reveal span{
   font-weight:650;
 }
+
+
+/* v0.8.7 — live weekly standings */
+.live-week-standings{
+  margin-top:0;
+}
+.live-week-head{
+  margin-bottom:10px;
+}
+.live-week-standings .pill{
+  min-width:64px;
+  text-align:center;
+}
+.live-week-standings td,
+.live-week-standings th{
+  font-size:1.02rem;
+}
+.live-week-standings td b{
+  font-size:1.08rem;
+}
+.live-week-note{
+  margin-top:12px;
+  line-height:1.4;
+  color:#5B5146;
+}
+@media(max-width:520px){
+  .live-week-standings td,
+  .live-week-standings th{
+    font-size:1.04rem;
+  }
+  .live-week-standings td b{
+    font-size:1.12rem;
+  }
+}

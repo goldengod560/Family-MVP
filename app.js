@@ -3,7 +3,7 @@ import { backend, isConfigured } from './api.mjs';
 import { buildWeeklyReportFromSnapshot } from './report.mjs';
 
 const SESSION_KEY='family-nfl-session-v06';
-const APP_VERSION='0.8.6';
+const APP_VERSION='0.8.7';
 const RESULT_DISMISS_PREFIX='family-nfl-result-seen';
 let session=loadSession();
 let state=null;
@@ -279,12 +279,129 @@ function renderPicks(){
   const complete=Number(prog.picked)===Number(prog.total)&&Number(prog.total)>0;
   return shell(`<div class="row between picks-heading"><div><div class="title">Week ${state.currentWeek} Picks</div><div class="sub">${games.length} games · ${lastScheduleSource}</div></div><button class="btn secondary compact schedule-btn" data-act="refresh-schedule" ${busy?'disabled':''}>↻ Schedule</button></div><div class="progress-card"><div class="row between"><b>Your progress</b><b>${prog.picked} / ${prog.total} picked</b></div><div class="progress-track"><span style="width:${prog.total?Math.min(100,(prog.picked/prog.total)*100):0}%"></span></div></div>${cards}${submitted(u.id)?`<div class="notice good-note submission-note">Submitted ✓ ${allSubmitted()?'Everyone is in, so all games are locked.':'Future games can still be updated until their kickoff or until everyone submits.'}</div>`:''}<button class="btn submit-btn" data-act="submit-week" ${!complete||busy?'disabled':''}>${submitted(u.id)?'Update Submission':'Submit Week'}</button>`,'picks');
 }
+
+function checkCountsFromCurrentGames(){
+  const counts=Object.fromEntries(PLAYERS.map(p=>[p.id,0]));
+  const games=state?.games||[];
+  for(const g of games){
+    if(!g.final)continue;
+    const picksByUser={};
+    PLAYERS.forEach(p=>{
+      const x=visiblePick(p.id,g.id);
+      if(x)picksByUser[p.id]={team:x.team,margin:x.margin};
+    });
+    const checks=resolveGameChecks({
+      picksByUser,
+      homeTeam:g.home,
+      awayTeam:g.away,
+      homeScore:Number(g.homeScore),
+      awayScore:Number(g.awayScore)
+    });
+    PLAYERS.forEach(p=>{if(checks[p.id])counts[p.id]+=1;});
+  }
+  return counts;
+}
+
+function checkCountsFromHistoryWeek(h){
+  const counts=Object.fromEntries(PLAYERS.map(p=>[p.id,0]));
+  for(const g of h?.games||[]){
+    const picksByUser={};
+    for(const x of g.picks||[])picksByUser[x.playerId]={team:x.team,margin:x.margin};
+    const checks=resolveGameChecks({
+      picksByUser,
+      homeTeam:g.home,
+      awayTeam:g.away,
+      homeScore:Number(g.homeScore),
+      awayScore:Number(g.awayScore)
+    });
+    PLAYERS.forEach(p=>{if(checks[p.id])counts[p.id]+=1;});
+  }
+  return counts;
+}
+
+function rankedWeeklyChecks(counts){
+  const rows=PLAYERS
+    .map(p=>({playerId:p.id,name:p.name,wins:Number(counts[p.id]||0)}))
+    .sort((a,b)=>b.wins-a.wins||a.name.localeCompare(b.name));
+  let lastWins=null,rank=0;
+  rows.forEach((x,i)=>{
+    if(lastWins===null||x.wins!==lastWins)rank=i+1;
+    x.rank=rank;
+    lastWins=x.wins;
+  });
+  return rows;
+}
+
+function weeklyLiveStandingsModel(){
+  const currentWeek=Number(state?.currentWeek||1);
+  const currentGames=state?.games||[];
+  const latestHistory=[...(state?.history||[])].sort((a,b)=>Number(b.week)-Number(a.week))[0]||null;
+  const firstKickoff=currentGames
+    .map(g=>new Date(g.kickoff).getTime())
+    .filter(Number.isFinite)
+    .sort((a,b)=>a-b)[0]||null;
+
+  // After a week finishes, keep its final weekly standings visible.
+  // Reset to the new week exactly 24 hours before the new week's first kickoff.
+  const keepPrevious=Boolean(
+    latestHistory &&
+    Number(latestHistory.week)===currentWeek-1 &&
+    (!firstKickoff || nowMs()<firstKickoff-(24*60*60*1000))
+  );
+
+  if(keepPrevious){
+    const counts=checkCountsFromHistoryWeek(latestHistory);
+    return {
+      week:Number(latestHistory.week),
+      rows:rankedWeeklyChecks(counts),
+      final:Number(latestHistory.games?.length||0),
+      total:Number(latestHistory.games?.length||0),
+      completed:true,
+      nextWeek:currentWeek,
+      resetAt:firstKickoff?firstKickoff-(24*60*60*1000):null
+    };
+  }
+
+  const counts=checkCountsFromCurrentGames();
+  const final=(currentGames||[]).filter(g=>g.final).length;
+  return {
+    week:currentWeek,
+    rows:rankedWeeklyChecks(counts),
+    final,
+    total:currentGames.length,
+    completed:Boolean(currentGames.length&&final===currentGames.length),
+    nextWeek:currentWeek+1,
+    resetAt:null
+  };
+}
+
 function renderStandings(){
   const latest=[...(state?.history||[])].sort((a,b)=>Number(b.week)-Number(a.week))[0];
   const lb=latest?leaderboardForWeek(latest.week):(state?.standings||[]).map((x,i)=>({playerId:x.playerId,name:x.name,total:Number(x.total||0),rank:i+1,points:0,movement:null}));
-  const current=state?.currentScores||[];
-  const currentBlock=current.length?`<div class="section-title">Week ${state.currentWeek} final</div><div class="card"><table><thead><tr><th>Player</th><th class="right">Checks</th><th class="right">Week</th></tr></thead><tbody>${PLAYERS.map(p=>{const s=current.find(x=>x.playerId===p.id)||{};return `<tr><td>${p.name}</td><td class="right">${s.checks||0}</td><td class="right"><b>+${s.points||0}</b></td></tr>`}).join('')}</tbody></table></div>`:`<div class="section-title">Current week</div><div class="notice"><b>${finalCount()} of ${(state?.games||[]).length} games final.</b><br>No Week ${state.currentWeek} points are awarded until every game is final.</div>`;
-  return shell(`<div class="title">Season Standings</div><div class="card standings-card"><table><thead><tr><th>#</th><th></th><th>Player</th><th class="right">Last week</th><th class="right">Total</th></tr></thead><tbody>${lb.map(x=>`<tr><td>${x.rank}</td><td class="movement ${movementClass(x.movement)}">${movementText(x.movement)}</td><td>${esc(x.name)}${x.playerId==='yasin'?' 🛡️':''}</td><td class="right">+${x.points||0}</td><td class="right"><b>${x.total||0}</b></td></tr>`).join('')}</tbody></table></div>${currentBlock}`,'standings');
+
+  const live=weeklyLiveStandingsModel();
+  const liveTitle=`Week ${live.week} ${live.completed?'Final':'Live'} Standings`;
+  const liveRows=live.rows.map(x=>`<tr><td>${x.rank}</td><td>${esc(x.name)}${x.playerId==='yasin'?' 🛡️':''}</td><td class="right"><b>${x.wins}${x.wins>0?' ✅':''}</b></td></tr>`).join('');
+  const liveNote=live.completed
+    ? (live.resetAt
+        ? `These stay here until 24 hours before Week ${live.nextWeek}'s first game, then the live standings reset to 0.`
+        : `Week ${live.week} is complete. The next week's live standings will start at 0.`)
+    : `Updates automatically as games go FINAL. Season points are still awarded only after the entire week is complete.`;
+
+  const liveBlock=`<div class="section-title">${liveTitle}</div>
+    <div class="card standings-card live-week-standings">
+      <div class="row between live-week-head">
+        <b>${live.final} of ${live.total} games final</b>
+        <span class="pill">${live.completed?'FINAL':'LIVE'}</span>
+      </div>
+      <table>
+        <thead><tr><th>#</th><th>Player</th><th class="right">Wins</th></tr></thead>
+        <tbody>${liveRows}</tbody>
+      </table>
+      <div class="tiny live-week-note">${liveNote}</div>
+    </div>`;
+
+  return shell(`<div class="title">Season Standings</div><div class="card standings-card"><table><thead><tr><th>#</th><th></th><th>Player</th><th class="right">Last week</th><th class="right">Total</th></tr></thead><tbody>${lb.map(x=>`<tr><td>${x.rank}</td><td class="movement ${movementClass(x.movement)}">${movementText(x.movement)}</td><td>${esc(x.name)}${x.playerId==='yasin'?' 🛡️':''}</td><td class="right">+${x.points||0}</td><td class="right"><b>${x.total||0}</b></td></tr>`).join('')}</tbody></table></div>${liveBlock}`,'standings');
 }
 function checksForHistoryGame(g){const map={};for(const p of g.picks||[])map[p.playerId]={team:p.team,margin:p.margin};return resolveGameChecks({picksByUser:map,homeTeam:g.home,awayTeam:g.away,homeScore:Number(g.homeScore),awayScore:Number(g.awayScore)});}
 function overrideDescription(o,games){
@@ -432,7 +549,7 @@ async function backgroundNFLRefresh(force=false){
   }
 }
 
-if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./service-worker.js?v=0861').catch(()=>{});
+if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./service-worker.js?v=0871').catch(()=>{});
 boot();
 setInterval(updateCountdownLabels,1000);
 setInterval(()=>backgroundStateRefresh(false),15000);

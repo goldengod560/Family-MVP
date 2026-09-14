@@ -4,32 +4,44 @@ const key = String(cfg.supabasePublishableKey || '').trim();
 
 export function isConfigured(){ return Boolean(base && key); }
 
-async function rpc(name, body={}){
+async function rpc(name, body={}, timeoutMs=0){
   if(!isConfigured()) throw new Error('Supabase is not configured.');
-  const r = await fetch(`${base}/rest/v1/rpc/${name}`, {
-    method:'POST',
-    headers:{
-      'content-type':'application/json',
-      'apikey': key,
-      'authorization': `Bearer ${key}`
-    },
-    body: JSON.stringify(body)
-  });
-  const text = await r.text();
-  let data = null;
-  try{ data = text ? JSON.parse(text) : null; }catch{ data = text; }
-  if(!r.ok){
-    const msg = data?.message || data?.error || data?.hint || text || `HTTP ${r.status}`;
-    const err = new Error(msg);
-    err.status = r.status;
-    err.payload = data;
+  const controller = timeoutMs > 0 ? new AbortController() : null;
+  const timer = controller ? setTimeout(()=>controller.abort(), timeoutMs) : null;
+  try{
+    const r = await fetch(`${base}/rest/v1/rpc/${name}`, {
+      method:'POST',
+      headers:{
+        'content-type':'application/json',
+        'apikey': key,
+        'authorization': `Bearer ${key}`
+      },
+      body: JSON.stringify(body),
+      ...(controller ? {signal:controller.signal} : {})
+    });
+    const text = await r.text();
+    let data = null;
+    try{ data = text ? JSON.parse(text) : null; }catch{ data = text; }
+    if(!r.ok){
+      const msg = data?.message || data?.error || data?.hint || text || `HTTP ${r.status}`;
+      const err = new Error(msg);
+      err.status = r.status;
+      err.payload = data;
+      throw err;
+    }
+    return data;
+  }catch(err){
+    if(err?.name==='AbortError'){
+      throw new Error('Connection timed out. Please try again.');
+    }
     throw err;
+  }finally{
+    if(timer)clearTimeout(timer);
   }
-  return data;
 }
 
 export const backend = {
-  login(playerId, pin){ return rpc('family_login', {p_player_id:playerId, p_pin:pin}); },
+  login(playerId, pin){ return rpc('family_login', {p_player_id:playerId, p_pin:pin}, 12000); },
   logout(token){ return rpc('family_logout', {p_token:token}); },
   snapshot(token){ return rpc('family_snapshot', {p_token:token}); },
   setPick(token, gameId, team, margin){ return rpc('family_set_pick', {p_token:token,p_game_id:gameId,p_team:team,p_margin:Number(margin)}); },
