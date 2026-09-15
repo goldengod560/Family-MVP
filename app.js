@@ -3,7 +3,7 @@ import { backend, isConfigured } from './api.mjs';
 import { buildWeeklyReportFromSnapshot } from './report.mjs';
 
 const SESSION_KEY='family-nfl-session-v06';
-const APP_VERSION='0.8.9';
+const APP_VERSION='0.9.0';
 const RESULT_DISMISS_PREFIX='family-nfl-result-seen';
 let session=loadSession();
 let state=null;
@@ -147,6 +147,28 @@ async function dismissCelebration(goHistory=false){
   try{await backend.markWeekResultSeen(session.token,w);await loadSnapshot();}catch{}
   render();
 }
+
+function renderConfettiBurst(week){
+  const colors=['#A28A5A','#C7B07A','#F7F3EA','#FFFFFF','#D9C89E'];
+  let seed=(Number(week)||1)*7919+37;
+  const rand=()=>{
+    seed=(seed*1664525+1013904223)>>>0;
+    return seed/4294967296;
+  };
+  return `<div class="confetti-layer" aria-hidden="true">${Array.from({length:72},(_,i)=>{
+    const bx=Math.round((rand()*2-1)*330);
+    const by=Math.round(-55-rand()*210);
+    const drift=Math.round((rand()*2-1)*180);
+    const spin=Math.round((rand()*2-1)*900);
+    const delay=(rand()*.32).toFixed(2);
+    const dur=(2.9+rand()*1.15).toFixed(2);
+    const w=Math.round(7+rand()*7);
+    const h=Math.round(10+rand()*10);
+    const c=colors[i%colors.length];
+    const radius=rand()>.72?'50%':'2px';
+    return `<i class="confetti-piece" style="--burst-x:${bx}px;--burst-y:${by}px;--drift-x:${drift}px;--spin:${spin}deg;--delay:${delay}s;--dur:${dur}s;--cw:${w}px;--ch:${h}px;--cc:${c};--cr:${radius}"></i>`;
+  }).join('')}</div>`;
+}
 function renderCelebration(){
   if(!celebration)return '';
   const lb=leaderboardForWeek(celebration.week);if(!lb.length)return '';
@@ -156,13 +178,13 @@ function renderCelebration(){
     const names=winners.map(x=>x.name).join(winners.length===2?' & ':', ');
     const title=maxPts===0?'Week Complete!':winners.length===1?`Congrats, ${names}!`:`Congrats, ${names}!`;
     const sub=maxPts===0?'Everyone tied this week':winners.length===1?`Week ${celebration.week} Winner`:`Week ${celebration.week} Winners`;
-    return `<div class="result-overlay"><div class="result-modal celebration"><button class="result-close" data-result-close aria-label="Close">×</button><div class="confetti">🎉 🏈 🎉</div><div class="result-kicker">WEEK ${celebration.week} COMPLETE</div><div class="result-title">${esc(title)}</div><div class="result-sub">${esc(sub)}</div><div class="result-points">+${maxPts} <span>point${maxPts===1?'':'s'}</span></div></div></div>`;
+    return `<div class="result-overlay">${renderConfettiBurst(celebration.week)}<div class="result-modal celebration"><button class="result-close" data-result-close aria-label="Close">×</button><div class="confetti">🎉 🏈 🎉</div><div class="result-kicker">WEEK ${celebration.week} COMPLETE</div><div class="result-title">${esc(title)}</div><div class="result-sub">${esc(sub)}</div><div class="result-points">+${maxPts} <span>point${maxPts===1?'':'s'}</span></div></div></div>`;
   }
   return `<div class="result-overlay"><div class="result-modal"><button class="result-close" data-result-close aria-label="Close">×</button><div class="result-kicker">UPDATED LEADERBOARD</div><div class="result-title small">Week ${celebration.week} Final Standings</div><div class="leader-list">${lb.map(x=>`<div class="leader-row"><span class="leader-rank">${x.rank}</span><span class="movement ${movementClass(x.movement)}">${movementText(x.movement)}</span><span class="leader-name">${esc(x.name)}</span><span class="leader-week">+${x.points}</span><b>${x.total} Total</b></div>`).join('')}</div><button class="btn" data-result-history>View Week ${celebration.week} Results →</button></div></div>`;
 }
 function startCelebrationTimer(){
   if(!celebration||celebration.stage!=='winner'||celebrationTimer)return;
-  celebrationTimer=setTimeout(()=>{celebrationTimer=null;if(celebration){celebration.stage='leaderboard';render();}},1800);
+  celebrationTimer=setTimeout(()=>{celebrationTimer=null;if(celebration){celebration.stage='leaderboard';render();}},4000);
 }
 
 async function loadSnapshot(){
@@ -549,7 +571,7 @@ async function backgroundNFLRefresh(force=false){
   }
 }
 
-if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./service-worker.js?v=0890').catch(()=>{});
+if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./service-worker.js?v=0901').catch(()=>{});
 boot();
 setInterval(updateCountdownLabels,1000);
 setInterval(()=>backgroundStateRefresh(false),15000);

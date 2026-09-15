@@ -1,11 +1,13 @@
-Family NFL Picks v0.8.9 — GitHub-only update.
+Family NFL Picks v0.9.0 — GitHub-only update.
 
-Upload ALL files in this folder to GitHub, replacing the current v0.8.8 files.
+Upload ALL files in this folder to GitHub, replacing the current files.
 
-Only visual change:
-- Week Live Standings win numbers are slightly larger than v0.8.8.
-- The green checkmark is also slightly larger.
-- Player-name sizing stays unchanged.
+v0.9.0 now includes:
+- Congratulations screen stays visible for 4.0 seconds.
+- A real full-screen confetti burst when the weekly winner screen appears.
+- Confetti pops outward first, then falls down the screen.
+- Confetti uses Saints-theme gold/cream/white colors.
+- The animation does not block taps and disappears automatically when the leaderboard appears.
 
-The v0.8.8 raw cumulative scoring system stays exactly the same.
-Do NOT run any new Supabase SQL for v0.8.9.
+Everything else remains unchanged from the prior build.
+No Supabase update is needed.

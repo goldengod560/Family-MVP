@@ -653,3 +653,49 @@ th{
     font-size:.95em;
   }
 }
+
+
+/* v0.9.0 — full-screen Saints-theme winner confetti */
+.result-overlay .result-modal{
+  z-index:2;
+}
+.confetti-layer{
+  position:fixed;
+  inset:0;
+  overflow:hidden;
+  pointer-events:none;
+  z-index:1;
+}
+.confetti-piece{
+  position:absolute;
+  left:50%;
+  top:43%;
+  width:var(--cw);
+  height:var(--ch);
+  background:var(--cc);
+  border-radius:var(--cr);
+  opacity:0;
+  box-shadow:0 1px 1px rgba(0,0,0,.12);
+  will-change:transform,opacity;
+  animation:confetti-burst-fall var(--dur) cubic-bezier(.14,.67,.22,1) var(--delay) forwards;
+}
+@keyframes confetti-burst-fall{
+  0%{
+    opacity:0;
+    transform:translate3d(-50%,-50%,0) scale(.35) rotate(0deg);
+  }
+  6%{
+    opacity:1;
+  }
+  22%{
+    opacity:1;
+    transform:translate3d(var(--burst-x),var(--burst-y),0) scale(1) rotate(calc(var(--spin) * .28));
+  }
+  100%{
+    opacity:.92;
+    transform:translate3d(calc(var(--burst-x) + var(--drift-x)),72vh,0) scale(.95) rotate(var(--spin));
+  }
+}
+@media (prefers-reduced-motion: reduce){
+  .confetti-piece{display:none}
+}
