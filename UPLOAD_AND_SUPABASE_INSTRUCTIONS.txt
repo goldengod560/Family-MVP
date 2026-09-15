@@ -1,0 +1,35 @@
+Family NFL Picks v0.8.8
+
+THIS VERSION HAS TWO PARTS:
+
+1) SUPABASE — RUN ONCE
+Open Supabase -> SQL Editor -> New query.
+Copy/paste and run:
+V088_RUN_ONCE_IN_SUPABASE_RAW_POINTS.sql
+
+This changes the official weekly scoring from normalized points to RAW cumulative points:
+weekly points = actual checks x round multiplier.
+
+Regular season multiplier is 1, so 6 checks = +6 season points.
+Playoff multipliers still apply to the raw checks.
+
+2) GITHUB — REPLACE THE WEBSITE FILES
+Upload the website files in this folder to GitHub, replacing the current v0.8.7 files.
+
+v0.8.8 also includes the live-standings size tweak you requested:
+- live weekly win numbers match the Season Standings Total-number size
+- the green checkmark is slightly smaller
+- player names stay the same size
+
+UNCHANGED:
+- current game lock/reveal rule
+- PINs
+- picks/margins
+- NFL refresh behavior
+- commissioner drawer fix
+- per-game checkmark rules
+- live weekly standings reset timing
+- theme/colors
+- four-player setup
+
+Nothing is deleted or reset.

@@ -3,7 +3,7 @@ import { backend, isConfigured } from './api.mjs';
 import { buildWeeklyReportFromSnapshot } from './report.mjs';
 
 const SESSION_KEY='family-nfl-session-v06';
-const APP_VERSION='0.8.7';
+const APP_VERSION='0.8.8';
 const RESULT_DISMISS_PREFIX='family-nfl-result-seen';
 let session=loadSession();
 let state=null;
@@ -381,7 +381,7 @@ function renderStandings(){
 
   const live=weeklyLiveStandingsModel();
   const liveTitle=`Week ${live.week} ${live.completed?'Final':'Live'} Standings`;
-  const liveRows=live.rows.map(x=>`<tr><td>${x.rank}</td><td>${esc(x.name)}${x.playerId==='yasin'?' 🛡️':''}</td><td class="right"><b>${x.wins}${x.wins>0?' ✅':''}</b></td></tr>`).join('');
+  const liveRows=live.rows.map(x=>`<tr><td>${x.rank}</td><td>${esc(x.name)}${x.playerId==='yasin'?' 🛡️':''}</td><td class="right"><b class="live-win-number">${x.wins}${x.wins>0?'<span class="live-win-check">✅</span>':''}</b></td></tr>`).join('');
   const liveNote=live.completed
     ? (live.resetAt
         ? `These stay here until 24 hours before Week ${live.nextWeek}'s first game, then the live standings reset to 0.`
@@ -549,7 +549,7 @@ async function backgroundNFLRefresh(force=false){
   }
 }
 
-if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./service-worker.js?v=0871').catch(()=>{});
+if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./service-worker.js?v=0880').catch(()=>{});
 boot();
 setInterval(updateCountdownLabels,1000);
 setInterval(()=>backgroundStateRefresh(false),15000);

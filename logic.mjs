@@ -38,9 +38,11 @@ export function resolveGameChecks({ picksByUser, homeTeam, awayTeam, homeScore, 
 }
 
 export function normalizeChecks(checkCounts, multiplier = 1) {
-  const vals = PLAYERS.map(p => Number(checkCounts[p.id] || 0));
-  const min = Math.min(...vals);
-  return Object.fromEntries(PLAYERS.map(p => [p.id, (Number(checkCounts[p.id] || 0) - min) * multiplier]));
+  // v0.8.8: legacy function name kept for compatibility.
+  // Weekly points are now the player's actual checks × round multiplier.
+  return Object.fromEntries(
+    PLAYERS.map(p => [p.id, Number(checkCounts[p.id] || 0) * multiplier])
+  );
 }
 
 export function playoffRoundMultiplier(round) {
@@ -51,9 +53,10 @@ export function playoffRoundMultiplier(round) {
 }
 
 export function predictionBonus(rawCorrectCounts, pointsEach) {
-  const raw = Object.fromEntries(PLAYERS.map(p => [p.id, Number(rawCorrectCounts[p.id] || 0) * pointsEach]));
-  const min = Math.min(...Object.values(raw));
-  return Object.fromEntries(PLAYERS.map(p => [p.id, raw[p.id] - min]));
+  // Prediction bonuses are also additive now; nobody's earned bonus is subtracted away.
+  return Object.fromEntries(
+    PLAYERS.map(p => [p.id, Number(rawCorrectCounts[p.id] || 0) * pointsEach])
+  );
 }
 
 export function canAdminInspectPicks({ adminUserId, submissions }) {
