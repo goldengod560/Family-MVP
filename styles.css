@@ -633,3 +633,23 @@ th{
     font-size:.86em;
   }
 }
+
+
+/* v0.8.9 — live standings win-number readability */
+.live-week-standings .live-win-number{
+  font-size:1.08rem;
+  font-weight:900;
+}
+.live-week-standings .live-win-check{
+  font-size:.95em;
+  margin-left:5px;
+  vertical-align:.02em;
+}
+@media(max-width:520px){
+  .live-week-standings .live-win-number{
+    font-size:1.08rem;
+  }
+  .live-week-standings .live-win-check{
+    font-size:.95em;
+  }
+}

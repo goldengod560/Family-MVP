@@ -1,1 +1,11 @@
-Upload ALL files in this folder to GitHub, replacing the existing files. This is the updated v0.8.7 build. It includes the 12-second stuck-login timeout fix plus a live weekly standings table on the Standings page showing how many game wins/checks each player has so far. It updates from FINAL games using the existing scoring/margin rules. After a week finishes, that week's final live standings remain visible until 24 hours before the next week's first kickoff; then the live table resets to 0 for the new week. Season points still post only after the full week is complete. The existing game lock/reveal rule is unchanged. GitHub-only: no Supabase changes and no data reset.
+Family NFL Picks v0.8.9 — GitHub-only update.
+
+Upload ALL files in this folder to GitHub, replacing the current v0.8.8 files.
+
+Only visual change:
+- Week Live Standings win numbers are slightly larger than v0.8.8.
+- The green checkmark is also slightly larger.
+- Player-name sizing stays unchanged.
+
+The v0.8.8 raw cumulative scoring system stays exactly the same.
+Do NOT run any new Supabase SQL for v0.8.9.
