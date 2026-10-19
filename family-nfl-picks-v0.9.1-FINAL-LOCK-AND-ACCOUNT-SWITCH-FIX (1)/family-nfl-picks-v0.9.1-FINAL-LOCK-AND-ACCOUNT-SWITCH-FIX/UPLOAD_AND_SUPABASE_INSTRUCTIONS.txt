@@ -1,0 +1,25 @@
+Family NFL Picks v0.9.1 FINAL — Lock Fix + Account-Switch Draft Fix
+
+THIS BUILD DOES NOT INCLUDE A COMMISSIONER 'MAKE PICK FOR PLAYER' FEATURE.
+
+WHAT IS INCLUDED:
+1) Future-game lock fix:
+   - A future game locks at kickoff, OR when all 4 players are genuinely fully submitted.
+   - An incomplete player (for example 1/14) cannot accidentally trigger the all-submitted lock.
+
+2) Account-switch draft fix:
+   - When you log out of Yasin and sign into Limar/Yezan/Samer on the same browser,
+     the previous player's local draft picks are cleared first.
+   - Yasin's unsaved/displayed draft values can no longer visually carry into another player's account.
+   - This does not alter anyone's saved Supabase picks.
+
+SUPABASE:
+Run V091_RUN_ONCE_IN_SUPABASE_LOCK_FIX.sql ONCE in a NEW SQL Editor query if you have not already run it.
+There is NO additional SQL for the account-switch fix.
+
+GITHUB:
+Upload all website files from this folder to the correct Family-MVP repository, replacing the current site files.
+
+NO RESET:
+This does not reset/delete picks, margins, points, standings, history, PINs, games, or overrides.
+The lock-fix SQL can remove only a stale/invalid submitted marker for an incomplete player; their picks remain saved.
