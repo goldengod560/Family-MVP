@@ -1,0 +1,35 @@
+Family NFL Picks v0.9.2 — Late-Pick Spoiler Protection
+
+NO COMMISSIONER MAKE-PICK FEATURE IS INCLUDED.
+
+WHAT v0.9.2 ADDS
+- If a game has kicked off and a player has NO saved pick for that game:
+  * the live score is hidden from THAT player
+  * everyone else's revealed picks for that game are hidden from THAT player
+  * the app does not fetch the NFL score feed on that player's phone while the missed live game is protected
+- The matchup itself remains visible, so the player can still make the late pick if Yasin authorizes the existing 5-minute Late Pick override.
+- Immediately after the late pick is successfully saved, the score and revealed picks become visible again.
+- If the game reaches FINAL without a pick, the score may reveal because final games cannot be reopened for a late pick.
+
+FAIRNESS
+This is player-specific. A person who already made their pick sees the game normally.
+Other family members are not affected.
+
+INCLUDED FROM THE AUDITED v0.9.1 BUILD
+- future-game lock fix
+- account-switch draft clearing
+- mobile pick-save reliability/verification
+- safer background refresh behavior
+- Supabase call timeouts
+- strict submission validation / lock integrity
+- cache-busting fixes
+
+SUPABASE
+Run V092_RUN_ONCE_IN_SUPABASE_LATE_PICK_SPOILER_PROTECTION.sql ONCE in a NEW SQL Editor query.
+It is safe if you previously ran the v0.9.1 lock SQL; CREATE OR REPLACE updates the affected functions.
+
+GITHUB
+Upload the website files from this folder to the correct Family-MVP repository, replacing the current site files.
+
+NO RESET
+This does NOT reset/delete picks, margins, points, standings, history, PINs, games, or overrides.
