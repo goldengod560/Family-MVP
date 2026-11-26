@@ -1,35 +1,21 @@
-Family NFL Picks v0.8.8
+Family NFL Picks v0.9.3 — Commissioner Self Late-Pick Fix
 
-THIS VERSION HAS TWO PARTS:
+FIXES
+- If Yasin himself misses a live game, that game now shows:
+  "Authorize My Late Pick · 5 min"
+  directly on Yasin's Picks page.
+- Pressing it opens the same logged 5-minute late-pick override.
+- After authorization, Yasin can select a team + margin normally.
+- Other-player fairness is unchanged: before Yasin submits his own week, he still cannot authorize another player's late pick.
+- Spoiler protection UI now hides the score cleanly instead of showing "TEAM null · TEAM null".
+- The "Revealed picks / No pick" section is hidden while spoiler protection is active.
 
-1) SUPABASE — RUN ONCE
-Open Supabase -> SQL Editor -> New query.
-Copy/paste and run:
-V088_RUN_ONCE_IN_SUPABASE_RAW_POINTS.sql
+SUPABASE
+No new SQL is needed if v0.9.2 spoiler-protection SQL is already installed.
+The backend already allows Yasin to authorize himself.
 
-This changes the official weekly scoring from normalized points to RAW cumulative points:
-weekly points = actual checks x round multiplier.
+GITHUB
+Upload/replace the website files in this folder in the Family-MVP site.
 
-Regular season multiplier is 1, so 6 checks = +6 season points.
-Playoff multipliers still apply to the raw checks.
-
-2) GITHUB — REPLACE THE WEBSITE FILES
-Upload the website files in this folder to GitHub, replacing the current v0.8.7 files.
-
-v0.8.8 also includes the live-standings size tweak you requested:
-- live weekly win numbers match the Season Standings Total-number size
-- the green checkmark is slightly smaller
-- player names stay the same size
-
-UNCHANGED:
-- current game lock/reveal rule
-- PINs
-- picks/margins
-- NFL refresh behavior
-- commissioner drawer fix
-- per-game checkmark rules
-- live weekly standings reset timing
-- theme/colors
-- four-player setup
-
-Nothing is deleted or reset.
+NO RESET
+No picks, margins, points, standings, history, PINs, games, or overrides are reset.

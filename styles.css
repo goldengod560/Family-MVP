@@ -699,3 +699,34 @@ th{
 @media (prefers-reduced-motion: reduce){
   .confetti-piece{display:none}
 }
+
+/* v0.9.1 mobile pick-save reliability */
+.pick-save-state{
+  margin-top:6px;
+  font-weight:800;
+  color:#7a6845;
+}
+
+/* v0.9.2 — late-pick spoiler protection */
+.notice.spoiler-lock{
+  border-color:#8a7648;
+  background:#f4eddb;
+  color:#4f4329;
+}
+
+/* v0.9.3 — commissioner self late-pick fix */
+.self-late-btn{
+  width:100%;
+  margin:10px 0 4px;
+}
+
+/* v0.9.4 — self override before commissioner submission */
+.self-missed-details{
+  border-color:#b89a57;
+}
+.self-missed-live{
+  margin-top:12px;
+}
+.self-missed-live .self-late-btn{
+  margin-top:12px;
+}

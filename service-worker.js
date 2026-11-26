@@ -1,5 +1,5 @@
-const CACHE = 'family-nfl-picks-v0901';
-const ASSETS = ['./','./index.html','./styles.css?v=0901','./config.js?v=0901','./api.mjs','./app.js?v=0901','./logic.mjs','./report.mjs','./manifest.webmanifest?v=0901'];
+const CACHE = 'family-nfl-picks-v0940';
+const ASSETS = ['./','./index.html','./styles.css?v=0940','./config.js?v=0940','./api.mjs?v=0940','./app.js?v=0940','./logic.mjs?v=0940','./report.mjs?v=0940','./manifest.webmanifest?v=0940'];
 
 self.addEventListener('install', event => {
   self.skipWaiting();

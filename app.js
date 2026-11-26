@@ -1,9 +1,9 @@
-import { PLAYERS, resolveGameChecks } from './logic.mjs';
-import { backend, isConfigured } from './api.mjs';
-import { buildWeeklyReportFromSnapshot } from './report.mjs';
+import { PLAYERS, resolveGameChecks } from './logic.mjs?v=0940';
+import { backend, isConfigured } from './api.mjs?v=0940';
+import { buildWeeklyReportFromSnapshot } from './report.mjs?v=0940';
 
 const SESSION_KEY='family-nfl-session-v06';
-const APP_VERSION='0.9.0';
+const APP_VERSION='0.9.4';
 const RESULT_DISMISS_PREFIX='family-nfl-result-seen';
 let session=loadSession();
 let state=null;
@@ -22,6 +22,7 @@ let nflQueuedForce=false;
 let lastNflRefreshAt=0;
 let reportRetryAt=0;
 const detailOpenState=new Map();
+const pickSaveTimers=new Map();
 
 function detailOpenAttr(key,defaultOpen=false){
   const isOpen=detailOpenState.has(key)?detailOpenState.get(key):defaultOpen;
@@ -41,14 +42,27 @@ function esc(s=''){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt
 function fmtKickoff(s){return new Date(s).toLocaleString([], {weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}
 function fmtClock(s){return s?new Date(s).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}):'—'}
 function nowMs(){return Date.now()+serverOffsetMs}
-function allSubmitted(){return (state?.submissions||[]).length===4}
-function submitted(id){return Boolean((state?.submissions||[]).find(x=>x.playerId===id))}
+function allSubmitted(){
+  const progress=state?.progress||[];
+  return PLAYERS.every(p=>{
+    const x=progress.find(v=>v.playerId===p.id);
+    return Boolean(x?.submitted) && Number(x?.total)>0 && Number(x?.picked)===Number(x?.total);
+  });
+}
+function submitted(id){
+  const x=(state?.progress||[]).find(v=>v.playerId===id);
+  return Boolean(x?.submitted) && Number(x?.total)>0 && Number(x?.picked)===Number(x?.total);
+}
 function gameById(id){return (state?.games||[]).find(g=>g.id===id)}
 function visiblePick(playerId,gameId){return (state?.visiblePicks||[]).find(x=>x.playerId===playerId&&x.gameId===gameId)}
 function ownPick(gameId){return visiblePick(viewer()?.id,gameId)}
 function progressFor(id){return (state?.progress||[]).find(x=>x.playerId===id)||{playerId:id,picked:0,total:(state?.games||[]).length,submitted:false}}
 function currentWeekScored(){return Array.isArray(state?.currentScores)&&state.currentScores.length>0}
 function finalCount(){return (state?.games||[]).filter(g=>g.final).length}
+function spoilerProtected(g){return Boolean(g?.scoreHidden)}
+function hasProtectedMissedGame(){
+  return Boolean((state?.games||[]).find(g=>spoilerProtected(g)))
+}
 
 function activeOverride(gameId){
   return (state?.overrides?.activeForViewer||[]).find(o=>o.gameId===gameId && (!o.expiresAt || new Date(o.expiresAt).getTime()>nowMs()));
@@ -196,11 +210,21 @@ async function loadSnapshot(){
     session.playerId=state.viewer.id;saveSession();hydrateDrafts();syncCelebrationFromState();
     maybeSendWeeklyEmail().catch(()=>{});
   }catch(e){
-    if(String(e.message||'').toLowerCase().includes('session')){session=null;saveSession();state=null;screen='home';}
+    if(String(e.message||'').toLowerCase().includes('session')){session=null;drafts={};saveSession();state=null;screen='home';}
     else throw e;
   }
 }
-function hydrateDrafts(){for(const g of state?.games||[]){const p=ownPick(g.id);drafts[g.id]={team:p?.team||drafts[g.id]?.team||'',margin:p?.margin??drafts[g.id]?.margin??''};}}
+function hydrateDrafts(){
+  for(const g of state?.games||[]){
+    const p=ownPick(g.id);
+    const existing=drafts[g.id]||{};
+    drafts[g.id]={
+      team:p?.team||existing.team||'',
+      margin:p?.margin??existing.margin??'',
+      saved:Boolean(p?.team&&Number(p?.margin)>0)
+    };
+  }
+}
 
 async function fetchEspnGames(requestedWeek=null){
   const season=state?.season||2026,week=Number(requestedWeek??state?.currentWeek??1);
@@ -215,11 +239,15 @@ async function fetchEspnGames(requestedWeek=null){
 }
 async function syncSchedule({quiet=false,retry=true}={}){
   if(!session?.token||!state)return;
+  if(!viewer()?.admin && hasProtectedMissedGame()){
+    if(!quiet)toast('NFL scores are hidden until your missed game is resolved.');
+    return;
+  }
   const requestedWeek=Number(state.currentWeek||1);
   try{
     const games=await fetchEspnGames(requestedWeek);
-    lastNflRefreshAt=Date.now();
     const synced=await backend.syncGamesForWeek(session.token,requestedWeek,games);
+    lastNflRefreshAt=Date.now();
     if(synced?.status==='stale-week'){
       await loadSnapshot();
       if(retry)return syncSchedule({quiet,retry:false});
@@ -269,6 +297,7 @@ function renderHome(){
   return shell(`<div class="card"><div class="title">Who’s picking?</div><p class="sub">Choose your name and enter your 4-digit PIN.</p><div class="grid">${PLAYERS.map(p=>`<button class="player ${p.admin?'admin':''}" data-player="${p.id}" ${busy?'disabled':''}>${p.name}</button>`).join('')}</div></div>${warn}<div class="notice"><b>v${APP_VERSION} shared mode:</b> all four phones share picks, progress, standings, History, and transparent commissioner overrides.</div>`);
 }
 function revealedBlock(g){
+  if(spoilerProtected(g))return '';
   if(!revealedForPlayers(g))return '';
   let checks={};
   if(g.final&&Number.isFinite(Number(g.homeScore))&&Number.isFinite(Number(g.awayScore))){
@@ -293,10 +322,16 @@ function renderPicks(){
   const cards=games.map(g=>{
     const p=ownPick(g.id),d=drafts[g.id]||{team:p?.team||'',margin:p?.margin||''},locked=isGameLocked(g),ov=activeOverride(g.id),st=gameStatus(g);
     const missing=!ownCompletePick(g.id),near=missing&&timeToKickoff(g)>0&&timeToKickoff(g)<=60*60*1000;
-    const liveLine=g.final?`<div class="score-line final">FINAL · ${g.away} ${g.awayScore} · ${g.home} ${g.homeScore}</div>`:(g.status==='in'&&Number.isFinite(Number(g.awayScore))&&Number.isFinite(Number(g.homeScore))?`<div class="score-line live">LIVE · ${g.away} ${g.awayScore} · ${g.home} ${g.homeScore}</div>`:'');
+    const liveLine=spoilerProtected(g)
+      ? `<div class="notice spoiler-lock mini"><b>🔒 Score hidden.</b> The live score and everyone else’s picks stay hidden until your authorized late pick is saved.</div>`
+      : g.final
+        ? `<div class="score-line final">FINAL · ${g.away} ${g.awayScore} · ${g.home} ${g.homeScore}</div>`
+        : (g.status==='in'&&Number.isFinite(Number(g.awayScore))&&Number.isFinite(Number(g.homeScore))
+            ? `<div class="score-line live">LIVE · ${g.away} ${g.awayScore} · ${g.home} ${g.homeScore}</div>`
+            : '');
     const rec=(name,abbr,record)=>`${esc(name)}<span class="record-line">${esc(abbr)}${record?` · ${esc(record)}`:''}</span>`;
     const statusAttr=st.until?` data-countdown-until="${esc(st.until)}" data-countdown-type="${st.kind||'override'}"`:'';
-    return `<div class="game ${locked?'lock':''} ${near?'urgent':''}"><div class="game-head"><span>${fmtKickoff(g.kickoff)}</span><span class="status-pill ${st.cls}"${statusAttr}>${esc(st.label)}</span></div>${near?`<div class="notice warn mini"><b>Pick needed soon.</b> This game locks at kickoff.</div>`:''}${st.label==='MISSED'?`<div class="notice bad mini"><b>Missed pick.</b> It stays a loss unless Yasin authorizes a 5-minute late-pick override.</div>`:''}${ov?`<div class="notice warn mini"><b>Yasin reopened this game.</b> Save your team + margin before <span data-override-inline="${esc(ov.expiresAt)}">${fmtRemaining(new Date(ov.expiresAt).getTime()-nowMs())}</span>. It relocks as soon as the late pick is saved.</div>`:''}<div class="teams"><button class="team ${d.team===g.away?'selected':''}" data-pick="${g.id}|${g.away}" ${locked||busy?'disabled':''}>${rec(g.awayName,g.away,g.awayRecord)}</button><button class="team ${d.team===g.home?'selected':''}" data-pick="${g.id}|${g.home}" ${locked||busy?'disabled':''}>${rec(g.homeName,g.home,g.homeRecord)}</button></div><div class="margin-wrap"><span><b>Margin</b></span><input class="margin" type="number" min="1" max="99" inputmode="numeric" data-margin="${g.id}" value="${esc(d.margin)}" ${locked||busy?'disabled':''}></div>${liveLine}${revealedBlock(g)}</div>`;
+    return `<div class="game ${locked?'lock':''} ${near?'urgent':''}"><div class="game-head"><span>${fmtKickoff(g.kickoff)}</span><span class="status-pill ${st.cls}"${statusAttr}>${esc(st.label)}</span></div>${near?`<div class="notice warn mini"><b>Pick needed soon.</b> This game locks at kickoff.</div>`:''}${st.label==='MISSED'?`<div class="notice bad mini"><b>Missed pick.</b> ${u.admin?'Authorize your own 5-minute late-pick window below.':'It stays a loss unless Yasin authorizes a 5-minute late-pick override.'}</div>${u.admin&&!ov?`<button class="btn secondary self-late-btn" data-late="${u.id}|${g.id}" ${busy?'disabled':''}>Authorize My Late Pick · 5 min</button>`:''}`:''}${ov?`<div class="notice warn mini"><b>Yasin reopened this game.</b> Save your team + margin before <span data-override-inline="${esc(ov.expiresAt)}">${fmtRemaining(new Date(ov.expiresAt).getTime()-nowMs())}</span>. It relocks as soon as the late pick is saved.</div>`:''}<div class="teams"><button class="team ${d.team===g.away?'selected':''}" data-pick="${g.id}|${g.away}" ${locked||busy?'disabled':''}>${rec(g.awayName,g.away,g.awayRecord)}</button><button class="team ${d.team===g.home?'selected':''}" data-pick="${g.id}|${g.home}" ${locked||busy?'disabled':''}>${rec(g.homeName,g.home,g.homeRecord)}</button></div><div class="margin-wrap"><span><b>Margin</b></span><input class="margin" type="number" min="1" max="99" inputmode="numeric" data-margin="${g.id}" value="${esc(d.margin)}" ${locked||busy?'disabled':''}></div>${!locked&&d.team&&Number(d.margin)>0&&draftDiffersFromSaved(g.id)?`<div class="tiny pick-save-state">Saving pick…</div>`:''}${liveLine}${revealedBlock(g)}</div>`;
   }).join('');
   const complete=Number(prog.picked)===Number(prog.total)&&Number(prog.total)>0;
   return shell(`<div class="row between picks-heading"><div><div class="title">Week ${state.currentWeek} Picks</div><div class="sub">${games.length} games · ${lastScheduleSource}</div></div><button class="btn secondary compact schedule-btn" data-act="refresh-schedule" ${busy?'disabled':''}>↻ Schedule</button></div><div class="progress-card"><div class="row between"><b>Your progress</b><b>${prog.picked} / ${prog.total} picked</b></div><div class="progress-track"><span style="width:${prog.total?Math.min(100,(prog.picked/prog.total)*100):0}%"></span></div></div>${cards}${submitted(u.id)?`<div class="notice good-note submission-note">Submitted ✓ ${allSubmitted()?'Everyone is in, so all games are locked.':'Future games can still be updated until their kickoff or until everyone submits.'}</div>`:''}<button class="btn submit-btn" data-act="submit-week" ${!complete||busy?'disabled':''}>${submitted(u.id)?'Update Submission':'Submit Week'}</button>`,'picks');
@@ -450,7 +485,10 @@ function renderPredictions(){
   return shell(`<div class="title">Week 12 Predictions</div><div class="notice ${locked?'warn':''}">${locked?'Predictions are locked after Week 12 unless Yasin uses a commissioner override.':'You can edit these anytime through Week 12.'}</div><div class="card"><div class="section-title">Conference Championship · +2 each</div><p class="sub">Choose 4 teams, separated by commas.</p><textarea id="confPred" rows="4" class="text-area" ${locked?'disabled':''}>${esc(c.join(', '))}</textarea><div class="section-title">Super Bowl · +3 each</div><p class="sub">Choose 2 teams, separated by commas.</p><textarea id="sbPred" rows="2" class="text-area" ${locked?'disabled':''}>${esc(s.join(', '))}</textarea>${!locked?`<button class="btn" style="margin-top:14px" data-act="save-predictions" ${busy?'disabled':''}>Save Predictions</button>`:''}</div>`,'predictions');
 }
 function statusRows(){
-  return PLAYERS.map(p=>{const x=progressFor(p.id),complete=Number(x.picked)===Number(x.total)&&Number(x.total)>0;return `<div class="status-row"><div><b>${p.name}</b><div class="tiny">${x.picked} / ${x.total} picked</div></div><span class="pill ${x.submitted?'good':complete?'':'warn'}">${x.submitted?'Submitted ✓':`${x.picked}/${x.total}`}</span></div>`}).join('');
+  return PLAYERS.map(p=>{
+    const x=progressFor(p.id),complete=Number(x.picked)===Number(x.total)&&Number(x.total)>0,isSubmitted=submitted(p.id);
+    return `<div class="status-row"><div><b>${p.name}</b><div class="tiny">${x.picked} / ${x.total} picked</div></div><span class="pill ${isSubmitted?'good':complete?'':'warn'}">${isSubmitted?'Submitted ✓':`${x.picked}/${x.total}`}</span></div>`;
+  }).join('');
 }
 function renderOverrideControls(g){
   if(g.final)return '';
@@ -463,11 +501,45 @@ function renderOverrideControls(g){
   }).join('');
   return `<div class="divider"></div><div class="tiny"><b>Override controls</b></div>${rows}`;
 }
+
+function renderOwnMissedLiveOverrides(){
+  const u=viewer();
+  if(!u?.admin)return '';
+  const games=(state?.games||[]).filter(g=>spoilerProtected(g)&&!ownCompletePick(g.id)&&!g.final);
+  if(!games.length)return '';
+
+  const cards=games.map(g=>{
+    const active=activeOverride(g.id);
+    const activeText=active?.expiresAt
+      ? `<span class="pill warn">OPEN · <b data-countdown-until="${esc(active.expiresAt)}" data-countdown-type="override">${fmtRemaining(new Date(active.expiresAt).getTime()-nowMs())}</b></span>`
+      : `<span class="pill warn">LIVE · SCORE HIDDEN</span>`;
+
+    const action=active
+      ? `<button class="btn secondary self-late-btn" data-nav="picks">Go to Picks</button>`
+      : `<button class="btn secondary self-late-btn" data-late="${u.id}|${g.id}" ${busy?'disabled':''}>Authorize My Late Pick · 5 min</button>`;
+
+    return `<div class="game review-game self-missed-live">
+      <div class="row between"><b>${esc(g.away)} @ ${esc(g.home)}</b>${activeText}</div>
+      <div class="tiny">${fmtKickoff(g.kickoff)} · Score and everyone else's picks are hidden.</div>
+      ${action}
+    </div>`;
+  }).join('');
+
+  return `<details class="compact-details self-missed-details" open>
+    <summary>Your Missed Live Game${games.length===1?'':'s'}</summary>
+    <div class="details-body">
+      <div class="notice warn mini"><b>Safe self-override access.</b> You can authorize only your own missed live game here before submitting the week. No score and no one else's picks are shown.</div>
+      ${cards}
+    </div>
+  </details>`;
+}
+
 function renderCommissioner(){
   const u=viewer(),admin=u.admin,overrideLog=renderOverrideLog(state.overrides?.all||[],state.games||[]),wideDefault=window.innerWidth>520;
   if(!admin)return shell(`<div class="title">Week ${state.currentWeek} Status</div><div class="card status-card"><div class="status-card-title viewer-status-title">Week ${state.currentWeek} Status</div>${statusRows()}</div><details class="compact-details" data-detail-key="status-overrides"${detailOpenAttr('status-overrides',wideDefault)}><summary>Override Activity <span class="pill">${state.overrides?.count||0}</span></summary><p class="sub">Visible to everyone for fairness.</p>${overrideLog}</details>`,'commissioner');
   const allowInspect=submitted('yasin');
-  const review=allowInspect?`<details class="compact-details review-details" data-detail-key="commish-review"${detailOpenAttr('commish-review',wideDefault)}><summary>Commissioner Review</summary><div class="details-body">${(state.games||[]).map(g=>`<div class="game review-game"><div class="row between"><b>${g.away} @ ${g.home}</b><span class="tiny">${fmtKickoff(g.kickoff)}</span></div>${PLAYERS.map(p=>{const x=visiblePick(p.id,g.id);return `<div class="row between review-pick"><span>${p.name}</span><span>${x?`${x.team} by ${x.margin}${x.lateOverride?' ⚠️':''}`:'—'}</span></div>`}).join('')}${renderOverrideControls(g)}</div>`).join('')}</div></details>`:`<div class="notice warn">You can see everyone's progress, but you cannot inspect their actual picks until <b>you submit your own Week ${state.currentWeek} picks</b>.</div>`;
+  const selfMissedLive=renderOwnMissedLiveOverrides();
+  const review=allowInspect?`<details class="compact-details review-details" data-detail-key="commish-review"${detailOpenAttr('commish-review',wideDefault)}><summary>Commissioner Review</summary><div class="details-body">${(state.games||[]).map(g=>`<div class="game review-game"><div class="row between"><b>${g.away} @ ${g.home}</b><span class="tiny">${fmtKickoff(g.kickoff)}</span></div>${PLAYERS.map(p=>{const x=visiblePick(p.id,g.id);return `<div class="row between review-pick"><span>${p.name}</span><span>${x?`${x.team} by ${x.margin}${x.lateOverride?' ⚠️':''}`:'—'}</span></div>`}).join('')}${renderOverrideControls(g)}</div>`).join('')}</div></details>`:`<div class="notice warn">You can see everyone's progress, but you cannot inspect their actual picks until <b>you submit your own Week ${state.currentWeek} picks</b>. Your own missed live game can still be authorized below without revealing the score.</div>${selfMissedLive}`;
   const scoreStatus=currentWeekScored()?'Week scored automatically ✓':`${finalCount()} of ${(state.games||[]).length} games final`;
   return shell(`<div class="title">Commissioner Dashboard</div><div class="card status-card"><div class="row between status-card-top"><div class="status-card-title">Week ${state.currentWeek} Status</div><span class="pill">${state.overrides?.count||0} override${Number(state.overrides?.count||0)===1?'':'s'}</span></div>${statusRows()}</div>${review}<details class="compact-details" data-detail-key="commish-overrides"${detailOpenAttr('commish-overrides',wideDefault)}><summary>Override Activity <span class="pill">${state.overrides?.count||0}</span></summary><div class="details-body"><p class="sub">Everyone can see these same override records on their Status page.</p>${overrideLog}</div></details><details class="compact-details" data-detail-key="commish-tools"${detailOpenAttr('commish-tools',wideDefault)}><summary>Commissioner Tools</summary><div class="details-body"><div class="notice"><b>${scoreStatus}</b><br>When every NFL game is FINAL, the week scores automatically and the next regular-season week becomes active.</div><div class="row tool-row"><button class="btn secondary" data-act="refresh-schedule" ${busy?'disabled':''}>Refresh NFL Data</button><button class="btn secondary" data-act="reset-pin" ${busy?'disabled':''}>Reset Player PIN</button></div><p class="tiny">Late Pick opens one missed game for exactly 5 minutes and relocks immediately after the player saves the pick. Commissioner Edit changes an already locked pick and requires a reason. Both are permanently visible.</p></div></details>`,'commissioner');
 }
@@ -480,7 +552,7 @@ function render(){
 function pinModal(player){
   document.body.insertAdjacentHTML('beforeend',`<div class="modal"><div class="modal-box"><div class="title">${player.name} PIN</div><p class="sub">Enter your 4-digit code.</p><input class="pin" id="pinInput" maxlength="4" inputmode="numeric" type="password"><div class="row" style="margin-top:14px"><button class="btn" id="pinGo">Continue</button><button class="btn secondary" id="pinCancel">Cancel</button></div></div></div>`);
   const input=document.querySelector('#pinInput');input.focus();document.querySelector('#pinCancel').onclick=()=>document.querySelector('.modal').remove();
-  const go=async()=>{const pin=input.value.trim();if(!/^\d{4}$/.test(pin))return toast('Enter exactly 4 digits.');const btn=document.querySelector('#pinGo');btn.disabled=true;btn.textContent='Signing in…';try{const res=await backend.login(player.id,pin);if(!res?.ok)throw new Error(res?.error||'Login failed.');session={token:res.token,playerId:res.player_id};saveSession();screen='picks';document.querySelector('.modal').remove();await loadSnapshot();await syncSchedule({quiet:true});render();if(res.created_pin)toast(`${player.name}'s PIN was created.`);}catch(e){btn.disabled=false;btn.textContent='Continue';toast(e.message||String(e));}};
+  const go=async()=>{const pin=input.value.trim();if(!/^\d{4}$/.test(pin))return toast('Enter exactly 4 digits.');const btn=document.querySelector('#pinGo');btn.disabled=true;btn.textContent='Signing in…';try{const res=await backend.login(player.id,pin);if(!res?.ok)throw new Error(res?.error||'Login failed.');session={token:res.token,playerId:res.player_id};drafts={};saveSession();screen='picks';await loadSnapshot();document.querySelector('.modal')?.remove();await syncSchedule({quiet:true});render();if(res.created_pin)toast(`${player.name}'s PIN was created.`);}catch(e){if(!state?.viewer){session=null;drafts={};state=null;saveSession();screen='home';}btn.disabled=false;btn.textContent='Continue';toast(e.message||String(e));}};
   document.querySelector('#pinGo').onclick=go;input.onkeydown=e=>{if(e.key==='Enter')go()};
 }
 function commissionerEditModal(player,game,pick){
@@ -488,9 +560,60 @@ function commissionerEditModal(player,game,pick){
   const close=()=>document.querySelector('.modal')?.remove();document.querySelector('#editCancel').onclick=close;
   document.querySelector('#editSave').onclick=async()=>{const team=document.querySelector('#editTeam').value,margin=Number(document.querySelector('#editMargin').value),reason=document.querySelector('#editReason').value.trim();if(!(margin>=1&&margin<=99))return toast('Margin must be 1–99.');if(reason.length<2)return toast('Enter a short reason.');const btn=document.querySelector('#editSave');btn.disabled=true;btn.textContent='Saving…';try{const r=await backend.commissionerEditPick(session.token,player.id,game.id,team,margin,reason);if(!r?.ok)throw new Error(r?.error||'Edit failed.');close();await loadSnapshot();toast(`${player.name}'s pick was updated and logged.`);render();}catch(e){btn.disabled=false;btn.textContent='Save Commissioner Edit';toast(e.message||String(e));}};
 }
-async function saveDraft(gid){
-  const d=drafts[gid];if(!d?.team||!(Number(d.margin)>=1&&Number(d.margin)<=99))return;
-  setBusy(true);try{const r=await backend.setPick(session.token,gid,d.team,Number(d.margin));if(!r?.ok)throw new Error(r?.error||'Pick could not be saved.');await loadSnapshot();if(r.lateOverride)toast('Late pick saved. This game is locked again.');}catch(e){toast(e.message||String(e));await loadSnapshot().catch(()=>{});}finally{busy=false;render();}
+async function saveDraft(gid,{quiet=false}={}){
+  const d=drafts[gid];
+  if(!d?.team||!(Number(d.margin)>=1&&Number(d.margin)<=99))return false;
+  if(!quiet)setBusy(true);
+  try{
+    const r=await backend.setPick(session.token,gid,d.team,Number(d.margin));
+    if(!r?.ok)throw new Error(r?.error||'Pick could not be saved.');
+    await loadSnapshot();
+    const saved=ownPick(gid);
+    if(!saved||saved.team!==d.team||Number(saved.margin)!==Number(d.margin)){
+      throw new Error('The pick did not verify after saving. Please try again.');
+    }
+    drafts[gid]={team:saved.team,margin:saved.margin,saved:true};
+    if(r.lateOverride)toast('Late pick saved. This game is locked again.');
+    return true;
+  }catch(e){
+    toast(e.message||String(e));
+    await loadSnapshot().catch(()=>{});
+    return false;
+  }finally{
+    if(!quiet){busy=false;render();}
+  }
+}
+
+function draftDiffersFromSaved(gid){
+  const d=drafts[gid]||{},p=ownPick(gid);
+  if(!d?.team||!(Number(d.margin)>=1&&Number(d.margin)<=99))return false;
+  return !p || p.team!==d.team || Number(p.margin)!==Number(d.margin);
+}
+function scheduleDraftSave(gid,delay=650){
+  if(pickSaveTimers.has(gid))clearTimeout(pickSaveTimers.get(gid));
+  const timer=setTimeout(async()=>{
+    pickSaveTimers.delete(gid);
+    if(draftDiffersFromSaved(gid)){
+      await saveDraft(gid,{quiet:true});
+      if(!document.querySelector('input:focus,textarea:focus,select:focus,.modal'))render();
+    }
+  },delay);
+  pickSaveTimers.set(gid,timer);
+}
+async function flushPendingDrafts(){
+  for(const [gid,timer] of pickSaveTimers.entries()){
+    clearTimeout(timer);
+    pickSaveTimers.delete(gid);
+  }
+  for(const g of state?.games||[]){
+    if(isGameLocked(g))continue;
+    if(draftDiffersFromSaved(g.id)){
+      const ok=await saveDraft(g.id,{quiet:true});
+      if(!ok)return false;
+    }
+  }
+  await loadSnapshot();
+  return true;
 }
 function bind(){
   document.querySelectorAll('details[data-detail-key]').forEach(d=>{
@@ -499,19 +622,75 @@ function bind(){
   document.querySelectorAll('[data-player]').forEach(b=>b.onclick=()=>pinModal(PLAYERS.find(p=>p.id===b.dataset.player)));
   document.querySelectorAll('[data-nav]').forEach(b=>b.onclick=()=>{screen=b.dataset.nav;render()});
   document.querySelectorAll('[data-history-week]').forEach(b=>b.onclick=()=>{historyWeek=b.dataset.historyWeek;render()});
-  document.querySelectorAll('[data-pick]').forEach(b=>b.onclick=async()=>{const [gid,team]=b.dataset.pick.split('|');drafts[gid]||={};drafts[gid].team=team;render();await saveDraft(gid)});
-  document.querySelectorAll('[data-margin]').forEach(i=>i.onchange=async()=>{const gid=i.dataset.margin;drafts[gid]||={};drafts[gid].margin=Number(i.value);await saveDraft(gid)});
-  document.querySelectorAll('[data-late]').forEach(b=>b.onclick=async()=>{const [pid,gid]=b.dataset.late.split('|');if(!confirm(`Open a 5-minute late-pick window for ${playerById(pid)?.name||pid}? Everyone will see the override in Status.`))return;setBusy(true);try{const r=await backend.authorizeLatePick(session.token,pid,gid);if(!r?.ok)throw new Error(r?.error||'Override failed.');await loadSnapshot();toast(`${playerById(pid)?.name||pid} has 5 minutes to save that late pick.`);}catch(e){toast(e.message||String(e))}finally{busy=false;render()}});
+  document.querySelectorAll('[data-pick]').forEach(b=>b.onclick=async()=>{
+    const [gid,team]=b.dataset.pick.split('|');
+    drafts[gid]||={};
+    drafts[gid].team=team;
+    drafts[gid].saved=false;
+    render();
+    if(Number(drafts[gid].margin)>=1&&Number(drafts[gid].margin)<=99){
+      await saveDraft(gid,{quiet:true});
+      render();
+    }
+  });
+  document.querySelectorAll('[data-margin]').forEach(i=>{
+    let committing=false;
+    const capture=()=>{
+      const gid=i.dataset.margin;
+      drafts[gid]||={};
+      drafts[gid].margin=Number(i.value);
+      drafts[gid].saved=false;
+      if(Number(i.value)>=1&&Number(i.value)<=99)scheduleDraftSave(gid,650);
+    };
+    const commit=async()=>{
+      if(committing)return;
+      committing=true;
+      const gid=i.dataset.margin;
+      if(pickSaveTimers.has(gid)){clearTimeout(pickSaveTimers.get(gid));pickSaveTimers.delete(gid);}
+      capture();
+      try{
+        if(draftDiffersFromSaved(gid))await saveDraft(gid,{quiet:true});
+      }finally{
+        committing=false;
+        setTimeout(()=>{if(!document.querySelector('input:focus,textarea:focus,select:focus,.modal'))render();},0);
+      }
+    };
+    i.oninput=capture;
+    i.onchange=commit;
+    i.onblur=commit;
+  });
+  document.querySelectorAll('[data-late]').forEach(b=>b.onclick=async()=>{
+    const [pid,gid]=b.dataset.late.split('|');
+    const self=pid===viewer()?.id;
+    const who=self?'yourself':(playerById(pid)?.name||pid);
+    if(!confirm(`Open a 5-minute late-pick window for ${who}? Everyone will see the override in Status.`))return;
+    setBusy(true);
+    try{
+      const r=await backend.authorizeLatePick(session.token,pid,gid);
+      if(!r?.ok)throw new Error(r?.error||'Override failed.');
+      await loadSnapshot();
+      toast(self?'Your late-pick window is open for 5 minutes.':`${playerById(pid)?.name||pid} has 5 minutes to save that late pick.`);
+      if(self)screen='picks';
+    }catch(e){toast(e.message||String(e))}
+    finally{busy=false;render()}
+  });
   document.querySelectorAll('[data-edit-pick]').forEach(b=>b.onclick=()=>{const [pid,gid]=b.dataset.editPick.split('|'),p=playerById(pid),g=gameById(gid),pick=visiblePick(pid,gid);if(p&&g&&pick)commissionerEditModal(p,g,pick)});
   document.querySelectorAll('[data-result-close]').forEach(b=>b.onclick=()=>dismissCelebration(false));
   document.querySelectorAll('[data-result-history]').forEach(b=>b.onclick=()=>dismissCelebration(true));
   document.querySelectorAll('[data-act]').forEach(b=>b.onclick=async()=>{
     const a=b.dataset.act;
-    if(a==='logout'){try{await backend.logout(session.token)}catch{}session=null;state=null;celebration=null;saveSession();screen='home';render();return;}
+    if(a==='logout'){try{await backend.logout(session.token)}catch{}session=null;drafts={};state=null;celebration=null;saveSession();screen='home';render();return;}
     if(a==='refresh-schedule'){setBusy(true);await syncSchedule({quiet:false});busy=false;render();return;}
-    if(a==='submit-week'){setBusy(true);try{const r=await backend.submitWeek(session.token);if(!r?.ok)throw new Error(r?.error||'Submission failed.');await loadSnapshot();submissionToast();}catch(e){toast(e.message||String(e))}finally{busy=false;render()}return;}
+    if(a==='submit-week'){setBusy(true);try{
+      const flushed=await flushPendingDrafts();
+      if(!flushed)throw new Error('One or more picks could not be saved. Please check them and try again.');
+      const r=await backend.submitWeek(session.token);
+      if(!r?.ok)throw new Error(r?.error||'Submission failed.');
+      await loadSnapshot();
+      submissionToast();
+    }catch(e){toast(e.message||String(e))}finally{busy=false;render()}return;}
     if(a==='save-predictions'){const split=v=>v.split(',').map(x=>x.trim()).filter(Boolean),c=split(document.querySelector('#confPred').value),s=split(document.querySelector('#sbPred').value);setBusy(true);try{const r=await backend.savePredictions(session.token,c,s);if(!r?.ok)throw new Error(r?.error||'Could not save predictions.');await loadSnapshot();toast('Predictions saved.');}catch(e){toast(e.message||String(e))}finally{busy=false;render()}return;}
-    if(a==='reset-pin'){const n=prompt('Reset whose PIN? Yasin, Yezan, Samer, or Limar'),p=PLAYERS.find(x=>x.name.toLowerCase()===String(n||'').trim().toLowerCase());if(!p)return toast('Player not found.');if(!confirm(`Reset ${p.name}'s PIN? They will create a new 4-digit PIN next login.`))return;setBusy(true);try{const r=await backend.resetPin(session.token,p.id);if(!r?.ok)throw new Error(r?.error||'PIN reset failed.');toast(`${p.name}'s PIN was reset.`);if(p.id===viewer().id){session=null;state=null;saveSession();screen='home';}}catch(e){toast(e.message||String(e))}finally{busy=false;render()}return;}
+    if(a==='reset-pin'){const n=prompt('Reset whose PIN? Yasin, Yezan, Samer, or Limar'),p=PLAYERS.find(x=>x.name.toLowerCase()===String(n||'').trim().toLowerCase());if(!p)return toast('Player not found.');if(!confirm(`Reset ${p.name}'s PIN? They will create a new 4-digit PIN next login.`))return;setBusy(true);try{const r=await backend.resetPin(session.token,p.id);if(!r?.ok)throw new Error(r?.error||'PIN reset failed.');toast(`${p.name}'s PIN was reset.`);if(p.id===viewer().id){session=null;drafts={};state=null;saveSession();screen='home';}}catch(e){toast(e.message||String(e))}finally{busy=false;render()}return;}
   });
 }
 
@@ -528,7 +707,7 @@ function updateCountdownLabels(){
   document.querySelectorAll('[data-override-inline]').forEach(el=>{const left=new Date(el.dataset.overrideInline).getTime()-nowMs();el.textContent=left<=0?'expired':fmtRemaining(left);if(left<=0)expired=true;});
   if(expired&&!stateRefreshing&&!nflRefreshing)setTimeout(()=>backgroundStateRefresh(true),250);
 }
-async function boot(){render();if(session?.token){try{await loadSnapshot();screen='picks';render();await syncSchedule({quiet:true});}catch(e){toast(`Could not connect to the shared database: ${e.message}`);session=null;state=null;saveSession();render();}}}
+async function boot(){render();if(session?.token){try{await loadSnapshot();screen='picks';render();await syncSchedule({quiet:true});}catch(e){toast(`Could not connect to the shared database: ${e.message}`);session=null;drafts={};state=null;saveSession();render();}}}
 function nflNeedsFastPolling(){
   const now=nowMs();
   return (state?.games||[]).some(g=>{
@@ -539,7 +718,7 @@ function nflNeedsFastPolling(){
 }
 async function backgroundStateRefresh(force=false){
   if(stateRefreshing||nflRefreshing||!session?.token||document.hidden)return;
-  if(!force&&document.querySelector('input:focus,textarea:focus,select:focus,.modal'))return;
+  if(document.querySelector('input:focus,textarea:focus,select:focus,.modal'))return;
   stateRefreshing=true;
   try{
     await loadSnapshot();
@@ -556,6 +735,8 @@ async function backgroundStateRefresh(force=false){
 }
 async function backgroundNFLRefresh(force=false){
   if(nflRefreshing||!session?.token||document.hidden)return;
+  if(!viewer()?.admin && hasProtectedMissedGame())return;
+  if(document.querySelector('input:focus,textarea:focus,select:focus,.modal'))return;
   if(stateRefreshing){
     nflRefreshQueued=true;
     nflQueuedForce=nflQueuedForce||force;
@@ -571,7 +752,7 @@ async function backgroundNFLRefresh(force=false){
   }
 }
 
-if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./service-worker.js?v=0901').catch(()=>{});
+if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./service-worker.js?v=0940').catch(()=>{});
 boot();
 setInterval(updateCountdownLabels,1000);
 setInterval(()=>backgroundStateRefresh(false),15000);

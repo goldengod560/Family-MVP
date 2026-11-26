@@ -1,0 +1,29 @@
+Family NFL Picks v0.9.4 — Self Override Before Submit
+
+WHAT CHANGED
+- Yasin no longer has to submit all Week picks before fixing HIS OWN missed live game.
+- Before Yasin submits the week, Commish still hides everyone else's actual picks.
+- If Yasin personally missed a game that is currently live, Commish shows a special:
+    Your Missed Live Game
+    TEAM @ TEAM
+    LIVE · SCORE HIDDEN
+    Authorize My Late Pick · 5 min
+- No live score is shown.
+- No other player's pick is shown.
+- Tapping the button authorizes only Yasin's own existing 5-minute late-pick override and sends him directly to Picks.
+- Once the pick is saved, the game relocks normally and the override remains permanently visible.
+
+IMPORTANT FAIRNESS RULES UNCHANGED
+- Yasin still cannot inspect other people's picks before submitting his own week.
+- Yasin still cannot use Commissioner Review to edit/authorize other players before submitting his own week.
+- This adds only a safe self-rescue path for Yasin's own missed live game.
+
+SUPABASE
+No new SQL is required if the v0.9.2 spoiler-protection SQL is already installed.
+
+NO RESET
+This does not reset picks, margins, standings, points, history, PINs, games, or overrides.
+
+UPLOAD
+Upload the FILES inside this ZIP to the ROOT of the GitHub repository, replacing the existing root files.
+After GitHub Pages refreshes, the header should show v0.9.4.
