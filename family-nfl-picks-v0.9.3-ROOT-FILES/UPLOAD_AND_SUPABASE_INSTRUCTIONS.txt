@@ -1,0 +1,21 @@
+Family NFL Picks v0.9.3 — Commissioner Self Late-Pick Fix
+
+FIXES
+- If Yasin himself misses a live game, that game now shows:
+  "Authorize My Late Pick · 5 min"
+  directly on Yasin's Picks page.
+- Pressing it opens the same logged 5-minute late-pick override.
+- After authorization, Yasin can select a team + margin normally.
+- Other-player fairness is unchanged: before Yasin submits his own week, he still cannot authorize another player's late pick.
+- Spoiler protection UI now hides the score cleanly instead of showing "TEAM null · TEAM null".
+- The "Revealed picks / No pick" section is hidden while spoiler protection is active.
+
+SUPABASE
+No new SQL is needed if v0.9.2 spoiler-protection SQL is already installed.
+The backend already allows Yasin to authorize himself.
+
+GITHUB
+Upload/replace the website files in this folder in the Family-MVP site.
+
+NO RESET
+No picks, margins, points, standings, history, PINs, games, or overrides are reset.
